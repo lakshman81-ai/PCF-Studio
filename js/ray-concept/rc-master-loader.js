@@ -1,0 +1,112 @@
+/**
+ * rc-master-loader.js — "Load data from Masters" logic for the CSV→PCF tab.
+ * Populates CA attributes, RATING, and weight (CA8) on all components
+ * using Linelist Manager, Piping Class Master, and Weight Config data.
+ *
+ * Steps:
+ *   1. CA1/2/5/10 from linelist (by lineNoKey); CA3/CA4 from piping class master (bore + pipingClass)
+ *   2. RATING from piping class prefix (user-configured 2-char then 1-char map)
+ *   3. CA8 (weight) from weight master (bore + rating + length ±6mm)
+ */
+
+import { linelistService } from '../services/linelist-service.js';
+import { dataManager }     from '../services/data-manager.js';
+
+const WEIGHT_TYPES = new Set([
+  'FLANGE', 'VALVE', 'REDUCER-CONCENTRIC', 'REDUCER-ECCENTRIC'
+]);
+
+/**
+ * Populate CA fields, rating, and CA8 on every component in-place.
+ * @param {Array}  components  rcState.components array (mutated in-place)
+ * @param {Object} cfg         getConfig() result (for ratingPrefixMap)
+ * @returns {number} count of components that were updated
+ */
+export async function loadMastersInto(components, cfg) {
+  const map2 = (cfg?.ratingPrefixMap?.twoChar) || { '10':10000,'20':20000,'15':1500,'25':2500 };
+  const map1 = (cfg?.ratingPrefixMap?.oneChar) || { '1':150,'3':300,'6':600,'9':900,'5':5000 };
+  const pcData     = dataManager.getPipingClassMaster() || [];
+  const weightData = dataManager.getWeights() || [];
+
+  let updated = 0;
+
+  for (const comp of components) {
+    let changed = false;
+
+    // ── Step 1a: CA1/2/5/10 from Linelist Manager ──────────────────
+    if (comp.lineNoKey) {
+      try {
+        const attrs = linelistService.getSmartAttributes(comp.lineNoKey);
+        if (attrs?.Found) {
+          if (attrs.P1   != null && attrs.P1   !== '') { comp.ca1  = attrs.P1;   changed = true; }
+          if (attrs.T1   != null && attrs.T1   !== '') { comp.ca2  = attrs.T1;   changed = true; }
+          if (attrs.InsThk != null && attrs.InsThk !== '') { comp.ca5 = attrs.InsThk; changed = true; }
+          if (attrs.HP   != null && attrs.HP   !== '') { comp.ca10 = attrs.HP;   changed = true; }
+        }
+      } catch (_) { /* linelist not loaded — skip */ }
+    }
+
+    // ── Step 1b: CA3/CA4 from Piping Class Master ───────────────────
+    if (comp.pipingClass && pcData.length > 0) {
+      const bore = parseFloat(comp.bore) || 0;
+      const pcClass = String(comp.pipingClass).trim();
+      const match = pcData.find(r =>
+        String(r['Piping Class'] || r['piping_class'] || r['PipingClass'] || '').trim() === pcClass &&
+        Math.abs(parseFloat(r['Size'] || r['DN'] || r['NPS'] || 0) - bore) < 1
+      );
+      if (match) {
+        const mat  = match['Material_Name'] || match['Material'] || match['material'] || '';
+        const wall = match['Wall thickness'] || match['WallThickness'] || match['Wall_Thickness'] || '';
+        if (mat)  { comp.ca3 = mat;  changed = true; }
+        if (wall) { comp.ca4 = wall; changed = true; }
+      }
+    }
+
+    // ── Step 2: Rating from piping class prefix ─────────────────────
+    if (comp.pipingClass) {
+      const s  = String(comp.pipingClass).trim();
+      const r2 = map2[s.slice(0, 2)];
+      const r1 = map1[s.slice(0, 1)];
+      const newRating = r2 ?? r1 ?? null;
+      if (newRating != null) {
+        comp.rating = newRating;
+        changed = true;
+      }
+    }
+
+    // ── Step 3: CA8 (weight) from Weight Master ─────────────────────
+    if (WEIGHT_TYPES.has(comp.type) && weightData.length > 0 && comp.rating) {
+      const bore   = parseFloat(comp.bore) || 0;
+      const rating = parseFloat(comp.rating) || 0;
+      // Euclidean 3D distance between EP1 and EP2 (in mm)
+      const ep1 = comp.ep1 || {}, ep2 = comp.ep2 || {};
+      const dx = (ep2.x || 0) - (ep1.x || 0);
+      const dy = (ep2.y || 0) - (ep1.y || 0);
+      const dz = (ep2.z || 0) - (ep1.z || 0);
+      const length = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+      let best = null, bestDelta = Infinity;
+      for (const w of weightData) {
+        const wBore   = parseFloat(w['DN'] || w['NS'] || w['Size (NPS)'] || w['Size'] || 0);
+        const wRating = parseFloat(w['Rating'] || 0);
+        const wLen    = parseFloat(w['RF-F/F'] || w['RF/RTJ'] || w['Length'] || 0);
+        const wKg     = parseFloat(w['RF/RTJ KG'] || w['Weight'] || w['KG'] || 0);
+        if (Math.abs(wBore - bore) > 1)  continue;
+        if (rating > 0 && wRating > 0 && wRating !== rating) continue;
+        const delta = Math.abs(wLen - length);
+        if (delta <= 6 && delta < bestDelta) {
+          best = wKg;
+          bestDelta = delta;
+        }
+      }
+      if (best != null) {
+        comp.ca8 = best;
+        changed = true;
+      }
+    }
+
+    if (changed) updated++;
+  }
+
+  return updated;
+}

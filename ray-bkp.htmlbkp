@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <title>⚡ PCF Converter-Ray Concept</title>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "react":               "https://esm.sh/react@19.2.4",
+      "react-dom/client":    "https://esm.sh/react-dom@19.2.4/client",
+      "react-dom":           "https://esm.sh/react-dom@19.2.4",
+      "zustand":             "https://esm.sh/zustand@5.0.11",
+      "zustand/vanilla":     "https://esm.sh/zustand@5.0.11/vanilla",
+      "@react-three/fiber":  "https://esm.sh/@react-three/fiber@9.5.0?deps=react@19.2.4,three@0.160.0",
+      "@react-three/drei":   "https://esm.sh/@react-three/drei@10.7.7?deps=react@19.2.4,three@0.160.0",
+      "papaparse":           "https://esm.sh/papaparse@5.5.3",
+      "xlsx":                "https://esm.sh/xlsx@0.18.5",
+      "three":               "https://esm.sh/three@0.160.0",
+      "three/addons/":       "https://esm.sh/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+  <!-- ── App Header ─────────────────────────────────────────────── -->
+  <header id="app-header">
+    <div class="app-title">
+      <div class="logo-mark" aria-hidden="true"></div>
+      <h1>⚡ PCF Converter-Ray Concept</h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary btn-sm" id="btn-theme-toggle" title="Switch Theme"></button>
+    </div>
+  </header>
+
+  <!-- ── Tab Navigation ─────────────────────────────────────────── -->
+  <nav id="tab-nav" role="tablist">
+    <button class="nav-btn active" id="rtab-ray" role="tab">⚡ CSV->PCF</button>
+    <button class="nav-btn"        id="rtab-viewer" role="tab">🧊 3D Viewer</button>
+    <button class="nav-btn"        id="rtab-masterdata" role="tab">🗄 Master Data</button>
+    <button class="nav-btn"        id="rtab-pcf-fixer" role="tab">🔧 PCF FIXER</button>
+  </nav>
+
+  <!-- ── Main Content ───────────────────────────────────────────── -->
+  <main id="app-main">
+
+    <!-- ① NEW RAY TAB ── rc-tab.js renders into this -->
+    <section id="panel-new-ray" class="tab-panel active" role="tabpanel">
+      <!-- Content injected by rc-tab.js on init -->
+    </section>
+
+    <!-- ② 3D VIEWER TAB -->
+    <section id="panel-viewer" class="tab-panel" role="tabpanel">
+      <div class="flex gap-1 items-center mb-1">
+        <h2 style="font-family:var(--font-code);font-size:0.9rem;color:var(--amber)">3D VIEWER</h2>
+        <div class="flex gap-1" style="margin-left:auto">
+          <span id="viewer-status" class="text-muted text-sm"></span>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:1rem;flex:1;min-height:0">
+
+        <!-- Left: PCF Input -->
+        <div class="panel" style="width:300px;display:flex;flex-direction:column;flex-shrink:0">
+          <div class="panel-header">
+            <span class="panel-title">PCF Input</span>
+            <div class="flex gap-1">
+              <button class="btn btn-secondary btn-sm" id="btn-viewer-open" title="Open .pcf file">📂</button>
+              <button class="btn btn-secondary btn-sm" id="btn-viewer-clear" title="Clear scene">🗑</button>
+              <input type="file" id="viewer-file-input" accept=".pcf,.txt" style="display:none">
+            </div>
+          </div>
+          <div class="panel-body" style="padding:0;flex:1;display:flex;flex-direction:column">
+            <textarea id="viewer-pcf-input"
+              placeholder="Paste PCF content here or open a .pcf file…"
+              style="flex:1;width:100%;border:none;resize:none;outline:none;
+                     background:var(--bg-0);color:var(--text-code);
+                     font-family:var(--font-code);font-size:0.75rem;padding:0.75rem">
+            </textarea>
+          </div>
+          <div style="padding:0.5rem;border-top:1px solid var(--steel);display:flex;gap:0.5rem;align-items:center">
+            <button class="btn btn-primary btn-sm" id="btn-viewer-generate" style="margin-left:auto">
+              ▶ Generate 3D
+            </button>
+          </div>
+          <!-- Axis config -->
+          <div style="padding:0.35rem 0.5rem;border-top:1px solid var(--steel);display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;font-size:0.72rem;color:var(--text-muted)">
+            <span style="font-weight:600;color:var(--text-secondary)">Axis:</span>
+            <label>X+ <select id="ax-xpos" style="font-size:0.7rem;background:var(--bg-panel);color:var(--text-primary);border:1px solid var(--steel);border-radius:3px">
+              <option>East</option><option>West</option><option>North</option><option>South</option><option>Up</option><option>Down</option>
+            </select></label>
+            <label>Y+ <select id="ax-ypos" style="font-size:0.7rem;background:var(--bg-panel);color:var(--text-primary);border:1px solid var(--steel);border-radius:3px">
+              <option>North</option><option>South</option><option>East</option><option>West</option><option>Up</option><option>Down</option>
+            </select></label>
+            <label>Z+ <select id="ax-zpos" style="font-size:0.7rem;background:var(--bg-panel);color:var(--text-primary);border:1px solid var(--steel);border-radius:3px">
+              <option>Up</option><option>Down</option><option>East</option><option>West</option><option>North</option><option>South</option>
+            </select></label>
+          </div>
+          <!-- Log -->
+          <div style="max-height:120px;overflow-y:auto;border-top:1px solid var(--steel);padding:0.4rem;font-family:var(--font-code);font-size:0.65rem;background:var(--bg-0);color:var(--text-muted)" id="viewer-log"></div>
+        </div>
+
+        <!-- Right: 3D Canvas -->
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+          <div class="flex gap-0 mb-1">
+            <button class="btn btn-sm viewer-toggle-btn active" id="btn-viewer-3d">🧊 3D View</button>
+            <button class="btn btn-sm viewer-toggle-btn" id="btn-viewer-table">📊 Data Table</button>
+            <button class="btn btn-sm viewer-toggle-btn" id="btn-viewer-centre" title="Re-centre camera">⊙ Centre</button>
+            <button class="btn btn-sm viewer-toggle-btn" id="btn-viewer-fullscreen" style="margin-left:auto">⛶</button>
+            <span id="viewer-support-ratio" style="display:none"></span>
+          </div>
+          <div id="viewer-canvas-wrap" style="flex:1;position:relative;background:#0a0a0f;border-radius:4px;overflow:hidden;min-height:400px">
+            <canvas id="viewer-canvas" style="width:100%;height:100%"></canvas>
+            <!-- react-root lives INSIDE the canvas wrapper so position:absolute stays contained -->
+            <div id="react-root" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:auto"></div>
+          </div>
+          <div id="viewer-table-wrap" style="display:none;flex:1;overflow:auto"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ③ MASTER DATA TAB -->
+    <section id="panel-masterdata" class="tab-panel" role="tabpanel">
+      <div id="integ-app-container">
+        <!-- Content injected by MasterDataController + CA Config sub-tab -->
+      </div>
+    </section>
+
+    <!-- ④ PCF FIXER TAB — iframe -->
+    <section id="panel-pcf-fixer" class="tab-panel" role="tabpanel">
+      <div style="display:flex;flex-direction:column;height:100%;gap:0.5rem">
+        <!-- PCF Fixer Controls Bar -->
+        <div style="display:flex;gap:0.5rem;padding:0.5rem;background:var(--bg-panel);border-radius:4px;align-items:center;flex-wrap:wrap;border:1px solid var(--steel)">
+          <span style="font-family:var(--font-code);font-size:0.75rem;color:var(--amber);font-weight:600">PCF FIXER</span>
+          <input type="text" id="pcf-fixer-url" placeholder="PCF Fixer URL"
+            style="flex:1;min-width:200px;padding:4px 8px;font-size:0.72rem;border:1px solid var(--steel);border-radius:3px;font-family:var(--font-code);background:var(--bg-0);color:var(--text-primary)">
+          <button id="btn-pcf-fixer-load" style="padding:2px 8px;font-size:0.72rem;background:var(--amber);color:#000;border:none;border-radius:3px;font-weight:600;cursor:pointer;font-family:var(--font-code)">📥 Load</button>
+          <button id="btn-pcf-fixer-reload" style="padding:2px 8px;font-size:0.72rem;background:var(--bg-2);color:var(--text-primary);border:1px solid var(--steel);border-radius:3px;cursor:pointer;font-family:var(--font-code)" title="Reload iframe">🔄 Reload</button>
+          <div style="margin-left:auto;display:flex;gap:0.5rem">
+            <button id="btn-pcf-fixer-fullscreen" style="padding:2px 8px;font-size:0.72rem;background:var(--bg-2);color:var(--text-primary);border:1px solid var(--steel);border-radius:3px;cursor:pointer;font-family:var(--font-code)" title="Open in new window">⛶ New Window</button>
+          </div>
+        </div>
+        <!-- PCF Fixer iframe -->
+        <iframe id="pcf-fixer-frame"
+          style="flex:1;border:1px solid var(--steel);border-radius:4px;background:var(--bg-0);display:none"
+          allow="clipboard-write">
+        </iframe>
+        <!-- Placeholder (shown before load) -->
+        <div id="pcf-fixer-placeholder"
+          style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);text-align:center">
+          <div>
+            <div style="font-size:2rem;margin-bottom:1rem">🔧</div>
+            <p style="font-size:0.85rem;margin-bottom:0.5rem;font-family:var(--font-code)">PCF Fixer not yet loaded</p>
+            <p style="font-size:0.72rem;color:var(--text-muted)">Enter URL above (e.g., <code>http://localhost:5174</code>) and click Load</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Status Bar ──────────────────────────────────────────────── -->
+  <footer id="status-bar">
+    <div class="status-item">
+      <div class="status-dot idle" id="status-dot"></div>
+      <span id="status-text">Ready</span>
+    </div>
+    <div id="status-bar-legacy" style="margin-left:auto;color:var(--text-muted);font-size:0.68rem">
+      <span id="app-revision">PCF Converter-Ray Concept</span>
+    </div>
+  </footer>
+
+  <script type="module" src="js/ray-app.js"></script>
+</body>
+</html>

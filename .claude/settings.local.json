@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(findstr \"react\")",
+      "Bash(dir jsuisimp-analysis-tab.js)",
+      "Bash(dir jsapp.js)",
+      "Bash(dir /b js)",
+      "Bash(npm run dev)",
+      "Bash(find /c/Users/reall/Downloads/200 -type f \\\\\\(-name *ray* -o -name *pcf* \\\\\\) ! -path */node_modules/*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(find C:Code200-6 -type f \\\\\\(-name *.vue -o -name *.jsx -o -name *.tsx \\\\\\))",
+      "Bash(where node:*)",
+      "Bash(where npx:*)",
+      "Bash(where vite:*)",
+      "Bash(ls C:/Code/200-6/node_modules/.bin/vite*)",
+      "Bash(ls \"C:\\\\Code\\\\200-6\\\\node_modules\\\\vite\\\\bin 2>/dev/null || find C:Code200-6node_modules -name vite.js\" -maxdepth 4)",
+      "Bash(npm install:*)",
+      "Bash(grep -rn \"23-03-2026\\\\|APP_REVISION\\\\|appRevision\" /c/Code/200-6/ --include=*.js --include=*.jsx --include=*.ts --include=*.tsx --include=*.html)",
+      "Bash(\"C:\\\\Program Files\\\\nodejs\\\\node.exe\" -e \":*)",
+      "Bash(pkill -f \"vite.js\")",
+      "Bash(grep -rn \"ray-s1-output\\\\|ray-subtab\\\\|panel-new-ray\" C:/Code/200-6/js --include=*.js)",
+      "Bash(grep -rn \"ray-s1-output\\\\|ray-gate\\\\|ray-btn-run\\\\|tab-new-ray\" C:/Code/200-6 --include=*.js --include=*.html)",
+      "Bash(find C:/Code/200-6 -name *.js -newer C:/Code/200-6/js/app.js)",
+      "Bash(find C:/Code/200-6 -name *.js)",
+      "Bash(xargs grep:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(grep -rn \"tab-new-ray\\\\|panel-new-ray\\\\|new.ray\" C:/Code/200-6/js --include=*.js --include=*.jsx)",
+      "Bash(grep -rn \"tab-new-ray\\\\|panel-new-ray\" C:/Code/200-6 --include=*.js --include=*.html --include=*.jsx)",
+      "Bash(grep -rn \"new-ray\\\\|newray\\\\|new_ray\" C:/Code/200-6 --include=*.js --include=*.html --include=*.jsx)",
+      "Bash(cmd /c \"dir /B C:\\\\Code\\\\200-6\\\\js\\\\ray-tabs && echo --- && dir /B C:\\\\Code\\\\200-6\\\\js\\\\ray-concept && echo --- && dir /B C:\\\\Code\\\\200-6\")",
+      "Bash(powershell -Command \"Get-ChildItem ''C:\\\\Code\\\\200-6\\\\Benchmark'' -Recurse | Select-Object -ExpandProperty Name\")",
+      "Bash(powershell -Command \"Remove-Item ''C:\\\\Code\\\\200-6\\\\convert-to-json.js'',''C:\\\\Code\\\\200-6\\\\fix_conflicts.js'',''C:\\\\Code\\\\200-6\\\\fix_temp.js'',''C:\\\\Code\\\\200-6\\\\sim_spx.js'',''C:\\\\Code\\\\200-6\\\\split-piping-class.js'',''C:\\\\Code\\\\200-6\\\\PCF_Benchmark_Tests.json'',''C:\\\\Code\\\\200-6\\\\js\\\\input\\\\row-validator.bak.js'' -Force -ErrorAction SilentlyContinue; Remove-Item ''C:\\\\Code\\\\200-6\\\\js\\\\simp-analysis'' -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item ''C:\\\\Code\\\\200-6\\\\Benchmark'' -Recurse -Force -ErrorAction SilentlyContinue; Write-Host ''Deleted''\")",
+      "Bash(powershell -Command \"Remove-Item ''C:\\\\Code\\\\200-6\\\\js\\\\editor\\\\components\\\\ValidatorPanel.jsx'',''C:\\\\Code\\\\200-6\\\\js\\\\editor\\\\hooks\\\\useSmartFixer.js'',''C:\\\\Code\\\\200-6\\\\js\\\\editor\\\\hooks\\\\useSmartValidator.js'' -Force -ErrorAction SilentlyContinue; Write-Host ''Done''\")",
+      "Bash(npm run:*)",
+      "Bash(grep -v '^$')",
+      "Bash(curl -s http://localhost:5174/)",
+      "Bash(grep -l \"Master\\\\|master\\\\|E3D\\\\|linedump\" /c/Code/200-6/js/ray-tabs/*.js)",
+      "Bash(findstr :5174)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

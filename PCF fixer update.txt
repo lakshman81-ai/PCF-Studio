@@ -1,0 +1,71 @@
+
+## 5. Current 3D Topology Canvas — Professional-Grade Improvements
+
+### 5.1 Rendering Quality
+
+| # | Improvement | Current State | Professional Standard |
+|---|-------------|---------------|----------------------|
+| 5.1.1 | **Anti-aliasing** | WebGL anti-aliasing enabled but no MSAA/FXAA post-processing | Add `EffectComposer` with FXAA or SMAA pass for smoother edges. |
+| 5.1.2 | **Shadows** | No shadows | Add soft shadows from directional light. `renderer.shadowMap.enabled = true`, `PCFSoftShadowMap`. Ground plane receives shadows. |
+| 5.1.3 | **Ambient Occlusion** | None | Add SSAO (Screen Space Ambient Occlusion) post-processing for depth perception in dense piping. |
+| 5.1.4 | **Material quality** | Basic `MeshStandardMaterial` with flat colors | Add PBR materials: metallic pipes (metalness: 0.4, roughness: 0.5), matte flanges, glossy valve bodies. Optional: environment map for reflections. |
+| 5.1.5 | **Edge rendering** | No edges visible on geometry | Add outline/edge detection shader for CAD-like wireframe overlay on solid geometry. Toggle with `E` key. |
+| 5.1.6 | **Background** | Solid white (`#ffffff`) | Professional gradient background (light: `#f0f2f5` to `#dde1e7`, dark: `#1a1f2e` to `#0d1117`). Toggle dark/light theme. |
+
+### 5.2 Camera and Navigation
+
+| # | Improvement | Current State | Professional Standard |
+|---|-------------|---------------|----------------------|
+| 5.2.1 | **View Cube** | `GizmoViewport` (3 arrows only) at bottom-right | Full interactive View Cube at top-right with 6 faces + 12 edges + 8 corners (as described in 3.b.2). |
+| 5.2.2 | **Camera modes** | OrbitControls only (orbit, pan, zoom) | Add Fly mode (WASD + mouse look), Walk mode (ground-level inspection), Turntable mode (Y-axis locked rotation). |
+| 5.2.3 | **Zoom to cursor** | Zoom targets orbit center, not mouse position | Implement zoom-to-cursor: on scroll, the zoom center shifts toward the mouse's world position. Standard in CAD tools. |
+| 5.2.4 | **Double-click zoom** | Not implemented | Double-click on a component → smooth zoom to fit that component with 20% padding. |
+| 5.2.5 | **Camera bookmarks** | None | Save/restore named camera positions. Persist in localStorage. Quick access via dropdown or number keys. |
+| 5.2.6 | **Perspective toggle** | Orthographic only | Add perspective mode toggle. Ortho for precision, perspective for spatial understanding. Smooth transition between modes. |
+| 5.2.7 | **Mini-map** | None | Small 2D overhead mini-map (150x150px, bottom-left) showing component positions as dots. Click on mini-map to pan 3D view. |
+
+### 5.3 Selection and Interaction
+
+| # | Improvement | Current State | Professional Standard |
+|---|-------------|---------------|----------------------|
+| 5.3.1 | **Multi-select** | Single selection only | Ctrl+Click to add/remove from selection. Shift+Click for range select in table. |
+| 5.3.2 | **Box select** | Not implemented | Drag rectangle to select all enclosed components (Section 3.a.1). |
+| 5.3.3 | **Selection outline** | Yellow emissive color only | Add `OutlinePass` post-processing for a crisp 2px colored outline around selected objects. |
+| 5.3.4 | **Hover highlight** | None | On hover, show a subtle highlight (0.1 emissive increase) and display a tooltip with component type and ID. |
+| 5.3.5 | **Context menu** | None | Right-click on a component → context menu: "Zoom to", "Properties", "Approve Fix", "Reject Fix", "Isolate", "Hide", "Select Connected". |
+| 5.3.6 | **Isolate mode** | Not implemented | Select components → "Isolate" → all other components become transparent (opacity: 0.1). "Exit Isolation" button to restore. |
+| 5.3.7 | **Hide/Show** | All components always visible | Right-click → "Hide" to make a component invisible. "Show All" button to restore hidden components. Counter showing "3 hidden" in status bar. |
+
+### 5.4 Information Display
+
+| # | Improvement | Current State | Professional Standard |
+|---|-------------|---------------|----------------------|
+| 5.4.1 | **Component labels** | None in 3D view | Toggleable labels at component centers: `PIPE #4 (200mm)`. Billboard text that always faces camera. |
+| 5.4.2 | **Endpoint markers** | No visual markers at endpoints | Small spheres (3px screen-space) at every EP1/EP2. Color-coded: green = connected, red = open, yellow = gap-filled. |
+| 5.4.3 | **Flow direction arrows** | None | Small arrows along pipe centerlines indicating flow direction (derived from component sequence). |
+| 5.4.4 | **Dimension overlay** | No dimensions shown | Toggle dimension lines between consecutive components showing distance in mm. |
+| 5.4.5 | **Status bar** | None | Bottom status bar: component count, selected count, gaps found, current zoom level, cursor world coordinates. |
+| 5.4.6 | **Color scheme selector** | Fixed color per type | Dropdown to switch color schemes: "By Type" (default), "By Line Key", "By Status" (OK/Gap/Error), "By Bore Size" (gradient). |
+
+### 5.5 Layout and Panels
+
+| # | Improvement | Current State | Professional Standard |
+|---|-------------|---------------|----------------------|
+| 5.5.1 | **Resizable split** | Fixed 40/60 split, no drag handle | Add a draggable splitter bar between left panel and 3D canvas. Double-click splitter to reset to default ratio. |
+| 5.5.2 | **Dockable panels** | Control panel fixed at top-right | Make property panel, gap list, and component list dockable: drag to left, right, bottom, or float as a window. |
+| 5.5.3 | **Fullscreen canvas** | No fullscreen mode for the 3D canvas | Add fullscreen button (top-right of canvas). Press `F11` or button → canvas fills entire viewport. ESC to exit. |
+| 5.5.4 | **Panel collapse** | Panels have expand/collapse arrows | Add keyboard shortcuts for panel toggles: `P` = Properties, `G` = Gap list, `T` = Table, `F` = Fullscreen. |
+| 5.5.5 | **Dark/Light theme** | Dark theme only | Add light theme option for printable screenshots and user preference. Toggle in settings. |
+
+### 5.6 Performance
+
+| # | Improvement | Current State | Professional Standard |
+|---|-------------|---------------|----------------------|
+| 5.6.1 | **Level of Detail (LOD)** | All components rendered at full detail regardless of distance | Implement LOD: far components rendered as simple lines, medium as low-poly cylinders (8 segments), close as full detail (16 segments). |
+| 5.6.2 | **Instanced rendering** | Each component creates its own geometry | Use `InstancedMesh` for components of the same type and bore — single draw call for all pipes, single for all bends, etc. |
+| 5.6.3 | **Frustum culling** | Three.js default frustum culling | Already handled by Three.js, but ensure bounding spheres are computed for all meshes. |
+| 5.6.4 | **Geometry pooling** | New geometry created per component | Create geometry pools per type+bore combination. Reuse cylinder geometries across all pipes of the same bore. |
+| 5.6.5 | **Progressive rendering** | All components rendered on first frame | For large models (1000+ components), render in batches of 50 per frame to avoid frame drops during initial load. |
+
+---
+
