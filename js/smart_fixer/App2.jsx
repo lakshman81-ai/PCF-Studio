@@ -96,6 +96,12 @@ function CameraController() {
         };
     }, [camera, controls, scene]);
 
+    React.useEffect(() => {
+        window.__pcfSetDataTable = (rows) => {
+            useSmartFixerStore.getState().setDataTable(rows);
+        };
+    }, []);
+
     return null;
 }
 
