@@ -18,6 +18,8 @@ import { NavigationPanel } from '../components/NavigationPanel';
 import { SettingsModal } from '../components/SettingsModal';
 import { ClippingPlanesLayer, ClippingPanelUI } from '../components/ClippingPlanesLayer';
 import { ToolbarRibbon } from '../components/ToolbarRibbon';
+import { dbg } from '../../utils/debugGate';
+import { DebugConsole } from '../components/DebugConsole';
 
 // ----------------------------------------------------
 // Colour & geometry helpers per component type
@@ -143,6 +145,9 @@ const InstancedPipes = () => {
   const dataTable = useStore(state => state.dataTable);
   const multiSelectedIds = useStore(state => state.multiSelectedIds); // Listen for selection changes
   const appSettings = useStore(state => state.appSettings);
+  const translucentMode = useStore(state => state.translucentMode);
+  const showRowLabels = useStore(state => state.showRowLabels);
+  const showRefLabels = useStore(state => state.showRefLabels);
   const pipes = getPipes();
   const meshRef = useRef();
 
@@ -153,6 +158,11 @@ const InstancedPipes = () => {
   const spools = useMemo(() => computeSpools(dataTable), [dataTable]);
 
   useEffect(() => {
+    if (typeof dbg !== 'undefined') dbg.render('INSTANCED_PIPES', `Rendering ${pipes.length} pipes`, {
+        translucentMode,
+        colorMode,
+        multiSelectedCount: multiSelectedIds?.length || 0
+    });
     if (!meshRef.current || pipes.length === 0) return;
 
     pipes.forEach((element, i) => {
@@ -199,7 +209,7 @@ const InstancedPipes = () => {
       // Handle multi-select highlighting for pipes
       const isSelected = multiSelectedIds.includes(element._rowIndex);
       if (isSelected) {
-          colStr = '#eab308'; // yellow for selection
+          colStr = appSettings.selectionColor; // yellow for selection
       }
 
       c.set(colStr);
@@ -211,15 +221,7 @@ const InstancedPipes = () => {
     meshRef.current.computeBoundingSphere();
   }, [pipes, dummy, colorMode, spools, c, multiSelectedIds]);
 
-  const [selectedGeom, setSelectedGeom] = useState(null);
-
   const selectedElementId = useStore(state => state.selectedElementId);
-  // Clear cylinder if nothing is selected or if the selected element was deleted
-  useEffect(() => {
-      if (multiSelectedIds.length === 0 && !selectedElementId) {
-          setSelectedGeom(null);
-      }
-  }, [multiSelectedIds, selectedElementId]);
 
   const handlePointerDown = (e) => {
       const canvasMode = useStore.getState().canvasMode;
@@ -236,28 +238,18 @@ const InstancedPipes = () => {
           const pipe = pipes[instanceId];
 
           if (e.button === 2) {
+              // Extract native event coordinates, which should be absolute viewport coords.
+              const nx = e.nativeEvent?.clientX ?? e.clientX;
+              const ny = e.nativeEvent?.clientY ?? e.clientY;
               useStore.getState().setContextMenu({
-                  x: e.clientX,
-                  y: e.clientY,
+                  x: nx,
+                  y: ny,
                   rowIndex: pipe._rowIndex
               });
               return;
           }
 
           if (pipe.ep1 && pipe.ep2) {
-              const midX = (pipe.ep1.x + pipe.ep2.x) / 2;
-              const midY = (pipe.ep1.y + pipe.ep2.y) / 2;
-              const midZ = (pipe.ep1.z + pipe.ep2.z) / 2;
-
-              const vecA = new THREE.Vector3(pipe.ep1.x, pipe.ep1.y, pipe.ep1.z);
-              const vecB = new THREE.Vector3(pipe.ep2.x, pipe.ep2.y, pipe.ep2.z);
-              const distance = vecA.distanceTo(vecB);
-              const radius = pipe.bore ? pipe.bore / 2 : 5;
-              const direction = vecB.clone().sub(vecA).normalize();
-              const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
-
-              setSelectedGeom({ pos: [midX, midY, midZ], dist: distance, radius, quat: quaternion });
-
               const isMultiSelect = e.ctrlKey || e.metaKey;
               if (isMultiSelect) {
                   useStore.getState().toggleMultiSelect(pipe._rowIndex);
@@ -278,6 +270,18 @@ const InstancedPipes = () => {
       // e.type is typically 'pointerdown' or 'click' from R3F, but we can also check e.eventObject.
       // Often, R3F's onPointerMissed fires for UI clicks if they aren't stopped.
       // We can check if e.nativeEvent?.target is a DOM element outside the canvas or if there's no nativeEvent.
+      if (e.nativeEvent?.__handled3D) {
+          dbg.event('POINTER_MISSED', 'Suppressed — click handled by ImmutableComponent');
+          return;
+      }
+
+      if (typeof dbg !== 'undefined') dbg.event('POINTER_MISSED', 'Fired', {
+          target: e.nativeEvent?.target?.tagName,
+          handled3D: !!e.nativeEvent?.__handled3D,
+          currentSelection: useStore.getState().selectedElementId,
+          multiSelected: useStore.getState().multiSelectedIds?.length || 0
+      });
+
       if (e.nativeEvent) {
           const target = e.nativeEvent.target;
           // If the click is on an input, button, or something that is clearly UI, ignore it.
@@ -289,7 +293,6 @@ const InstancedPipes = () => {
 
       // Don't clear if Ctrl is held down, allows multi-select to stay persistent across blank clicks
       if (e && (e.ctrlKey || e.metaKey)) return;
-      setSelectedGeom(null);
       useStore.getState().setSelected(null);
       useStore.getState().clearMultiSelect();
   };
@@ -300,16 +303,34 @@ const InstancedPipes = () => {
     <group onPointerMissed={handlePointerMissed}>
         <instancedMesh ref={meshRef} args={[null, null, pipes.length]} onPointerDown={handlePointerDown}>
           <cylinderGeometry args={[1, 1, 1, 16]} />
-          <meshStandardMaterial color="#3b82f6" />
+          <meshStandardMaterial color="#3b82f6" transparent={translucentMode} opacity={translucentMode ? 0.3 : 1} depthWrite={!translucentMode} />
         </instancedMesh>
 
-        {/* Highlight Overlay */}
-        {selectedGeom && (
-             <mesh position={selectedGeom.pos} quaternion={selectedGeom.quat}>
-                 <cylinderGeometry args={[selectedGeom.radius * 1.2, selectedGeom.radius * 1.2, selectedGeom.dist, 16]} />
-                 <meshBasicMaterial color="#eab308" transparent opacity={0.5} depthTest={false} />
-             </mesh>
-        )}
+        {/* Highlight Overlays */}
+        {(multiSelectedIds || []).map(id => {
+            const pipe = dataTable.find(r => r._rowIndex === id);
+            if (!pipe || (pipe.type || '').toUpperCase() !== 'PIPE' || !pipe.ep1 || !pipe.ep2) return null;
+
+            const midX = (pipe.ep1.x + pipe.ep2.x) / 2;
+            const midY = (pipe.ep1.y + pipe.ep2.y) / 2;
+            const midZ = (pipe.ep1.z + pipe.ep2.z) / 2;
+
+            const vecA = new THREE.Vector3(pipe.ep1.x, pipe.ep1.y, pipe.ep1.z);
+            const vecB = new THREE.Vector3(pipe.ep2.x, pipe.ep2.y, pipe.ep2.z);
+            const distance = vecA.distanceTo(vecB);
+            if (distance === 0) return null;
+
+            const radius = pipe.bore ? pipe.bore / 2 : 5;
+            const direction = vecB.clone().sub(vecA).normalize();
+            const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+
+            return (
+                 <mesh key={`hl-${id}`} position={[midX, midY, midZ]} quaternion={quaternion}>
+                     <cylinderGeometry args={[radius * 1.2, radius * 1.2, distance, 16]} />
+                     <meshBasicMaterial color={appSettings.selectionColor} transparent opacity={appSettings.selectionOpacity} depthTest={false} />
+                 </mesh>
+            );
+        })}
     </group>
   );
 };
@@ -324,6 +345,10 @@ const ImmutableComponents = () => {
   const dataTable = useStore(state => state.dataTable);
   const multiSelectedIds = useStore(state => state.multiSelectedIds);
   const appSettings = useStore(state => state.appSettings);
+  const translucentMode = useStore(state => state.translucentMode);
+  const showRowLabels = useStore(state => state.showRowLabels);
+  const showRefLabels = useStore(state => state.showRefLabels);
+  const isTranslucent = translucentMode;
 
   // Re-use compute spools if needed here
   const spools = useMemo(() => computeSpools(dataTable), [dataTable]);
@@ -358,15 +383,27 @@ const ImmutableComponents = () => {
         }
 
         const isSelected = multiSelectedIds.includes(el._rowIndex);
-        if (isSelected) color = '#eab308';
+        if (isSelected) color = appSettings.selectionColor;
 
         const type = (el.type || '').toUpperCase();
 
         const handleSelect = (e) => {
+          if (e.nativeEvent) e.nativeEvent.__handled3D = true;
           const canvasMode = useStore.getState().canvasMode;
           if (canvasMode !== 'VIEW') return;
 
           e.stopPropagation();
+
+          if (e.button === 2) {
+              const nx = e.nativeEvent?.clientX ?? e.clientX;
+              const ny = e.nativeEvent?.clientY ?? e.clientY;
+              useStore.getState().setContextMenu({
+                  x: nx,
+                  y: ny,
+                  rowIndex: el._rowIndex
+              });
+              return;
+          }
 
           const isMultiSelect = e.ctrlKey || e.metaKey;
           if (isMultiSelect) {
@@ -383,18 +420,41 @@ const ImmutableComponents = () => {
           return (
             <mesh key={`fl-${i}`} position={mid} quaternion={quat} onPointerDown={handleSelect}>
               <cylinderGeometry args={[r * 1.6, r * 1.6, Math.max(dist * 0.15, 10), 24]} />
-              <meshStandardMaterial color={isSelected ? '#eab308' : color} />
+              <meshStandardMaterial color={isSelected ? appSettings.selectionColor : color} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
             </mesh>
           );
         }
 
         if (type === 'VALVE') {
-          // Box body
+          // Double Cone (hourglass) body + small stem/wheel
           return (
-            <mesh key={`vv-${i}`} position={mid} quaternion={quat} onPointerDown={handleSelect}>
-              <boxGeometry args={[r * 2.2, dist, r * 2.2]} />
-              <meshStandardMaterial color={isSelected ? '#eab308' : color} />
-            </mesh>
+            <group key={`vv-${i}`} position={mid} quaternion={quat} onPointerDown={handleSelect}>
+                {/* Bottom Cone */}
+                <mesh position={[0, -dist/4, 0]}>
+                    <cylinderGeometry args={[0, r*1.8, dist/2, 16]} />
+                    <meshStandardMaterial color={isSelected ? appSettings.selectionColor : color} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
+                </mesh>
+                {/* Top Cone */}
+                <mesh position={[0, dist/4, 0]}>
+                    <cylinderGeometry args={[r*1.8, 0, dist/2, 16]} />
+                    <meshStandardMaterial color={isSelected ? appSettings.selectionColor : color} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
+                </mesh>
+                {/* Stem and wheel */}
+                <group position={[r*2, 0, 0]} rotation={[0, 0, Math.PI/2]}>
+                    <mesh position={[0, dist/2, 0]}>
+                        <cylinderGeometry args={[r*0.2, r*0.2, dist, 8]} />
+                        <meshStandardMaterial color={isSelected ? appSettings.selectionColor : color} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
+                    </mesh>
+                    <mesh position={[0, dist, 0]} rotation={[Math.PI/2, 0, 0]}>
+                         <torusGeometry args={[r, r*0.2, 8, 24]} />
+                         <meshStandardMaterial color={isSelected ? appSettings.selectionColor : color} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
+                    </mesh>
+                    <mesh position={[0, dist, 0]}>
+                         <cylinderGeometry args={[r*0.4, r*0.4, r*0.2, 16]} />
+                         <meshStandardMaterial color={isSelected ? appSettings.selectionColor : color} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
+                    </mesh>
+                </group>
+            </group>
           );
         }
 
@@ -403,7 +463,7 @@ const ImmutableComponents = () => {
           return (
             <mesh key={`bn-${i}`} position={mid} quaternion={quat} onPointerDown={handleSelect}>
               <cylinderGeometry args={[r * 1.1, r * 1.1, dist, 16]} />
-              <meshStandardMaterial color={isSelected ? '#eab308' : color} />
+              <meshStandardMaterial color={isSelected ? appSettings.selectionColor : color} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
             </mesh>
           );
         }
@@ -429,11 +489,11 @@ const ImmutableComponents = () => {
             <group key={`tee-${i}`} onPointerDown={handleSelect}>
               <mesh position={mid} quaternion={quat}>
                 <cylinderGeometry args={[r, r, dist, 16]} />
-                <meshStandardMaterial color={isSelected ? '#eab308' : color} />
+                <meshStandardMaterial color={isSelected ? appSettings.selectionColor : color} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
               </mesh>
               <mesh position={branchMid} quaternion={branchQuat}>
                 <cylinderGeometry args={[branchR, branchR, branchLen, 12]} />
-                <meshStandardMaterial color={isSelected ? '#eab308' : color} />
+                <meshStandardMaterial color={isSelected ? appSettings.selectionColor : color} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
               </mesh>
             </group>
           );
@@ -447,7 +507,7 @@ const ImmutableComponents = () => {
           return (
             <mesh key={`ol-${i}`} position={pos} onPointerDown={handleSelect}>
               <sphereGeometry args={[r * 1.3, 12, 12]} />
-              <meshStandardMaterial color={isSelected ? '#eab308' : color} />
+              <meshStandardMaterial color={isSelected ? appSettings.selectionColor : color} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
             </mesh>
           );
         }
@@ -458,33 +518,48 @@ const ImmutableComponents = () => {
           const isGui = ['CA100', 'GUI'].includes((el.type || '').toUpperCase()) ||
                         Object.values(el).some(v => typeof v === 'string' && ['CA100', 'GUI'].includes(v.toUpperCase()));
 
-          const finalColor = isSelected ? '#eab308' : (isRest || isGui ? '#22c55e' : (color === '#3b82f6' ? '#94a3b8' : color));
+          const finalColor = isSelected ? appSettings.selectionColor : (isRest || isGui ? '#22c55e' : (color === '#3b82f6' ? '#94a3b8' : color));
 
           return (
             <group key={`supp-${i}`} position={mid} quaternion={quat} onPointerDown={handleSelect}>
-              {/* Support rendering: Up arrow, positioned below the pipe */}
-              <group position={[0, -dist / 1.5, 0]}>
+              {/* Support rendering: Up arrow, positioned below the pipe (Bore/2 + half support height) */}
+              <group position={[0, -(r + dist / 2), 0]}>
                 <mesh position={[0, dist / 4, 0]}>
                   <cylinderGeometry args={[0, r * 2, dist / 2, 8]} />
-                  <meshStandardMaterial color={finalColor} />
+                  <meshStandardMaterial color={finalColor} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
                 </mesh>
                 <mesh position={[0, -dist / 4, 0]}>
                    <cylinderGeometry args={[r, r, dist / 2, 8]} />
-                   <meshStandardMaterial color={finalColor} />
+                   <meshStandardMaterial color={finalColor} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
                 </mesh>
               </group>
 
               {/* Lateral Arrows for CA100 / Gui */}
               {isGui && (
                 <>
-                  <mesh position={[dist / 3, dist / 4, 0]} rotation={[0, 0, Math.PI / 2]}>
-                     <cylinderGeometry args={[0, r * 1.5, dist / 3, 8]} />
-                     <meshStandardMaterial color={finalColor} />
-                  </mesh>
-                  <mesh position={[-dist / 3, dist / 4, 0]} rotation={[0, 0, -Math.PI / 2]}>
-                     <cylinderGeometry args={[0, r * 1.5, dist / 3, 8]} />
-                     <meshStandardMaterial color={finalColor} />
-                  </mesh>
+                  {/* Left lateral arrow */}
+                  <group position={[r + dist/4, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+                    <mesh position={[0, dist/4, 0]}>
+                       <cylinderGeometry args={[0, r * 1.5, dist / 2, 8]} />
+                       <meshStandardMaterial color={finalColor} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
+                    </mesh>
+                    <mesh position={[0, -dist/4, 0]}>
+                       <cylinderGeometry args={[r, r, dist / 2, 8]} />
+                       <meshStandardMaterial color={finalColor} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
+                    </mesh>
+                  </group>
+
+                  {/* Right lateral arrow */}
+                  <group position={[-(r + dist/4), 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
+                    <mesh position={[0, dist/4, 0]}>
+                       <cylinderGeometry args={[0, r * 1.5, dist / 2, 8]} />
+                       <meshStandardMaterial color={finalColor} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
+                    </mesh>
+                    <mesh position={[0, -dist/4, 0]}>
+                       <cylinderGeometry args={[r, r, dist / 2, 8]} />
+                       <meshStandardMaterial color={finalColor} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
+                    </mesh>
+                  </group>
                 </>
               )}
             </group>
@@ -495,7 +570,7 @@ const ImmutableComponents = () => {
         return (
           <mesh key={`im-${i}`} position={mid} quaternion={quat} onPointerDown={handleSelect}>
             <cylinderGeometry args={[r, r, dist, 16]} />
-            <meshStandardMaterial color={isSelected ? '#eab308' : color} />
+            <meshStandardMaterial color={isSelected ? appSettings.selectionColor : color} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
           </mesh>
         );
       })}
@@ -508,6 +583,7 @@ const ImmutableComponents = () => {
 // by the currently-active proposal
 // ----------------------------------------------------
 const GhostOverlay = ({ activeProposal }) => {
+  const appSettings = useStore(state => state.appSettings);
   if (!activeProposal) return null;
 
   const elements = [activeProposal.elementA, activeProposal.elementB].filter(Boolean);
@@ -528,7 +604,7 @@ const GhostOverlay = ({ activeProposal }) => {
           <mesh key={`ghost-${i}`} position={mid} quaternion={quat}>
             <cylinderGeometry args={[r * 1.05, r * 1.05, dist, 16]} />
             {/* Faint highlight to show original position */}
-            <meshBasicMaterial color="#eab308" opacity={0.3} transparent depthWrite={false} />
+            <meshBasicMaterial color={appSettings.selectionColor} opacity={0.3} transparent depthWrite={false} />
           </mesh>
         );
       })}
@@ -848,6 +924,7 @@ const SingleIssuePanel = ({ proposals, validationIssues, currentIssueIndex, setC
 // Provides a unified snapping point for Measure, Break, etc.
 // ----------------------------------------------------
 const GlobalSnapLayer = () => {
+    const appSettings = useStore(state => state.appSettings);
     const canvasMode = useStore(state => state.canvasMode);
     const dataTable = useStore(state => state.dataTable);
     const setCursorSnapPoint = useStore(state => state.setCursorSnapPoint);
@@ -910,7 +987,7 @@ const GlobalSnapLayer = () => {
             {cursorSnapPoint && (
                 <mesh position={cursorSnapPoint} renderOrder={999}>
                     <sphereGeometry args={[15, 16, 16]} />
-                    <meshBasicMaterial color="#eab308" transparent opacity={0.8} depthTest={false} />
+                    <meshBasicMaterial color={appSettings.selectionColor} transparent opacity={0.8} depthTest={false} />
                 </mesh>
             )}
         </group>
@@ -1015,7 +1092,7 @@ const LegendLayer = () => {
 };
 
 // ----------------------------------------------------
-// Marquee Overlay
+// Marquee Overlay (Professional Implementation)
 // ----------------------------------------------------
 const MarqueeLayer = () => {
     const canvasMode = useStore(state => state.canvasMode);
@@ -1024,102 +1101,183 @@ const MarqueeLayer = () => {
     const setMultiSelect = useStore(state => state.setMultiSelect);
     const pushHistory = useStore(state => state.pushHistory);
     const { dispatch } = useAppContext();
-    const [startPt, setStartPt] = useState(null);
-    const [currPt, setCurrPt] = useState(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+    const [currentPos, setCurrentPos] = useState({ x: 0, y: 0 });
+    const overlayRef = useRef(null);
+    const pointerIdRef = useRef(null);
 
     const { camera, size } = useThree();
     const isActive = canvasMode === 'MARQUEE_SELECT' || canvasMode === 'MARQUEE_ZOOM' || canvasMode === 'MARQUEE_DELETE';
 
-    // Instead of 3D raycasting which is unreliable for dragging over empty space,
-    // we use a 2D HTML overlay for the drag box.
-    const [isDragging, setIsDragging] = useState(false);
-    const [startPos, setStartPos] = useState({ x: 0, y: 0 });
-    const [currentPos, setCurrentPos] = useState({ x: 0, y: 0 });
+    const MIN_DRAG_DISTANCE = 5;
 
     if (!isActive) return null;
 
+    /**
+     * Check if a component (via its bounding box) intersects the marquee.
+     * Maps all 8 corners of the 3D bounding box to 2D screen space
+     * using exact HTML canvas offset bounds to support both ortho & persp.
+     */
+    const isComponentInMarquee = (el, rectScreen) => {
+        const pts = [];
+
+        // Collect all relevant 3D points for the component
+        if (el.ep1) pts.push(new THREE.Vector3(el.ep1.x, el.ep1.y, el.ep1.z));
+        if (el.ep2) pts.push(new THREE.Vector3(el.ep2.x, el.ep2.y, el.ep2.z));
+        if (el.cp) pts.push(new THREE.Vector3(el.cp.x, el.cp.y, el.cp.z));
+        if (el.bp) pts.push(new THREE.Vector3(el.bp.x, el.bp.y, el.bp.z));
+        if (el.supportCoor) pts.push(new THREE.Vector3(el.supportCoor.x, el.supportCoor.y, el.supportCoor.z));
+
+        if (pts.length === 0) return false;
+
+        // Build bounding box from all points
+        const box = new THREE.Box3();
+        pts.forEach(p => box.expandByPoint(p));
+
+        const corners = [
+            new THREE.Vector3(box.min.x, box.min.y, box.min.z),
+            new THREE.Vector3(box.max.x, box.min.y, box.min.z),
+            new THREE.Vector3(box.min.x, box.max.y, box.min.z),
+            new THREE.Vector3(box.max.x, box.max.y, box.min.z),
+            new THREE.Vector3(box.min.x, box.min.y, box.max.z),
+            new THREE.Vector3(box.max.x, box.min.y, box.max.z),
+            new THREE.Vector3(box.min.x, box.max.y, box.max.z),
+            new THREE.Vector3(box.max.x, box.max.y, box.max.z)
+        ];
+
+        const canvasRect = document.querySelector('canvas')?.getBoundingClientRect();
+        const canvasOffsetLeft = canvasRect ? canvasRect.left : 0;
+        const canvasOffsetTop = canvasRect ? canvasRect.top : 0;
+
+        let anyInside = false;
+
+        for (const corner of corners) {
+            const projected = corner.clone().project(camera);
+
+            // Behind camera check
+            if (projected.z > 1 || projected.z < -1) continue;
+
+            const px = (projected.x * 0.5 + 0.5) * size.width + canvasOffsetLeft;
+            const py = (projected.y * -0.5 + 0.5) * size.height + canvasOffsetTop;
+
+            const inside = px >= rectScreen.left && px <= rectScreen.right &&
+                           py >= rectScreen.top && py <= rectScreen.bottom;
+
+            if (inside) anyInside = true;
+        }
+
+        return anyInside;
+    };
+
     const handlePointerDown = (e) => {
-        // e.clientX/Y from HTML overlay
+        if (e.button !== 0) return; // Only left mouse button
+
         e.stopPropagation();
+        pointerIdRef.current = e.pointerId;
+
+        if (overlayRef.current) {
+            overlayRef.current.setPointerCapture(e.pointerId);
+        }
+
         setIsDragging(true);
         setStartPos({ x: e.clientX, y: e.clientY });
         setCurrentPos({ x: e.clientX, y: e.clientY });
     };
 
     const handlePointerMove = (e) => {
-        if (!isDragging) return;
+        if (!isDragging || pointerIdRef.current !== e.pointerId) return;
+
+        e.preventDefault();
+        e.stopPropagation();
         setCurrentPos({ x: e.clientX, y: e.clientY });
     };
 
     const handlePointerUp = (e) => {
-        if (!isDragging) return;
-        setIsDragging(false);
-        e.stopPropagation();
+        if (!isDragging || pointerIdRef.current !== e.pointerId) return;
 
-        // 1. Convert DOM rect to NDC (Normalized Device Coordinates: -1 to +1)
-        const rect = {
+        e.stopPropagation();
+        setIsDragging(false);
+
+        if (overlayRef.current) {
+            try {
+                overlayRef.current.releasePointerCapture(e.pointerId);
+            } catch (err) {
+                // Pointer already released
+            }
+        }
+
+        // Calculate drag distance
+        const dragDist = Math.sqrt(
+            Math.pow(currentPos.x - startPos.x, 2) +
+            Math.pow(currentPos.y - startPos.y, 2)
+        );
+
+        if (dragDist < MIN_DRAG_DISTANCE) {
+            setCanvasMode('VIEW');
+            return;
+        }
+
+        const rectScreen = {
             left: Math.min(startPos.x, currentPos.x),
             right: Math.max(startPos.x, currentPos.x),
             top: Math.min(startPos.y, currentPos.y),
             bottom: Math.max(startPos.y, currentPos.y)
         };
 
-        // If drag was too small, ignore
-        if (rect.right - rect.left < 5 && rect.bottom - rect.top < 5) {
-            setCanvasMode('VIEW');
-            return;
-        }
-
-        const selected = [];
-
-        // Helper to check if a 3D point is inside the 2D selection rect
-        const isPointInRect = (pt3d) => {
-            const vec = pt3d.clone();
-            vec.project(camera); // Convert to NDC
-            // Convert NDC to pixel coordinates
-            const px = (vec.x *  .5 + .5) * size.width;
-            const py = (vec.y * -.5 + .5) * size.height;
-            return px >= rect.left && px <= rect.right && py >= rect.top && py <= rect.bottom;
-        };
-
-        const isCrossing = currentPos.x < startPos.x;
-
-        dataTable.forEach(el => {
-            if (useStore.getState().hiddenElementIds.includes(el._rowIndex)) return;
-
-            let pts = [];
-            if (el.ep1) pts.push(new THREE.Vector3(el.ep1.x, el.ep1.y, el.ep1.z));
-            if (el.ep2) pts.push(new THREE.Vector3(el.ep2.x, el.ep2.y, el.ep2.z));
-
-            // If component has no EPs (like some isolated supports), use mid or cp
-            if (pts.length === 0 && el.cp) {
-                pts.push(new THREE.Vector3(el.cp.x, el.cp.y, el.cp.z));
-            }
-
-            if (pts.length === 0) return;
-
-            let allInside = true;
-            let anyInside = false;
-
-            pts.forEach(pt => {
-                const inside = isPointInRect(pt);
-                if (!inside) allInside = false;
-                if (inside) anyInside = true;
-            });
-
-            if ((isCrossing && anyInside) || (!isCrossing && allInside)) {
-                selected.push(el);
-            }
+        const selected = dataTable.filter(el => {
+            if (useStore.getState().hiddenElementIds.includes(el._rowIndex)) return false;
+            return isComponentInMarquee(el, rectScreen);
         });
 
         if (canvasMode === 'MARQUEE_SELECT') {
             setMultiSelect(selected.map(e => e._rowIndex));
-        } else if (canvasMode === 'MARQUEE_ZOOM' && selected.length > 0) {
-            setMultiSelect(selected.map(e => e._rowIndex));
-            window.dispatchEvent(new CustomEvent('canvas-auto-center', { detail: { elements: selected } }));
+        } else if (canvasMode === 'MARQUEE_ZOOM') {
+            // Calculate bounding box of selected elements
+            let minX = Infinity, minY = Infinity, minZ = Infinity;
+            let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+            const pts = [];
+            selected.forEach(el => {
+                if (el.ep1) pts.push(el.ep1);
+                if (el.ep2) pts.push(el.ep2);
+                if (el.cp) pts.push(el.cp);
+            });
+            // If no elements selected, use the drag rectangle center as zoom target
+            if (pts.length === 0) {
+                // Unproject the center of the rectangle to world space
+                const canvasRect = document.querySelector('canvas')?.getBoundingClientRect();
+                const canvasOffsetLeft = canvasRect ? canvasRect.left : 0;
+                const canvasOffsetTop = canvasRect ? canvasRect.top : 0;
+                const cx = ((rectScreen.left + rectScreen.right) / 2 - canvasOffsetLeft) / size.width * 2 - 1;
+                const cy = -((rectScreen.top + rectScreen.bottom) / 2 - canvasOffsetTop) / size.height * 2 + 1;
+                const worldPt = new THREE.Vector3(cx, cy, 0.5).unproject(camera);
+                dbg.tool('MARQUEE_ZOOM', 'No elements in rect — zooming to center', { cx, cy });
+                window.dispatchEvent(new CustomEvent('canvas-focus-point', {
+                    detail: { x: worldPt.x, y: worldPt.y, z: worldPt.z, dist: 3000 }
+                }));
+            } else {
+                pts.forEach(p => {
+                    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+                    minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+                    minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z);
+                });
+                const center = {
+                    x: (minX + maxX) / 2,
+                    y: (minY + maxY) / 2,
+                    z: (minZ + maxZ) / 2
+                };
+                const extent = Math.max(maxX - minX, maxY - minY, maxZ - minZ, 500);
+                dbg.tool('MARQUEE_ZOOM', `Zooming to ${selected.length} elements`, {
+                    center, extent, elementCount: selected.length
+                });
+                window.dispatchEvent(new CustomEvent('canvas-focus-point', {
+                    detail: { ...center, dist: extent * 1.5 }
+                }));
+            }
+            // NOTE: Do NOT call setMultiSelect — zoom is a view operation, not selection
         } else if (canvasMode === 'MARQUEE_DELETE' && selected.length > 0) {
             if (window.confirm(`Delete ${selected.length} elements?`)) {
-                pushHistory('Delete Marquee');
+                pushHistory('Delete via Marquee');
                 const rowIndices = selected.map(e => e._rowIndex);
                 dispatch({ type: 'DELETE_ELEMENTS', payload: { rowIndices } });
 
@@ -1132,36 +1290,75 @@ const MarqueeLayer = () => {
         setCanvasMode('VIEW');
     };
 
+    const handlePointerLeave = (e) => {
+        if (isDragging && pointerIdRef.current === e.pointerId) {
+            handlePointerUp(e);
+        }
+    };
+
+    const getMarqueeStyle = () => {
+        const isZoom = canvasMode === 'MARQUEE_ZOOM';
+        const isDelete = canvasMode === 'MARQUEE_DELETE';
+        const isCrossing = currentPos.x < startPos.x;
+        const borderColor = isDelete ? '#ef4444' : isZoom ? '#818cf8' : (isCrossing ? '#10b981' : '#3b82f6');
+        const bgColor = isDelete ? 'rgba(239,68,68,0.08)' : isZoom ? 'rgba(129,140,248,0.08)' : (isCrossing ? 'rgba(16,185,129,0.08)' : 'rgba(59,130,246,0.08)');
+        const borderStyle = isCrossing && !isZoom && !isDelete ? 'dashed' : 'solid';
+        return {
+            position: 'absolute',
+            left: Math.min(startPos.x, currentPos.x),
+            top: Math.min(startPos.y, currentPos.y),
+            width: Math.abs(currentPos.x - startPos.x),
+            height: Math.abs(currentPos.y - startPos.y),
+            border: `2px ${borderStyle} ${borderColor}`,
+            backgroundColor: bgColor,
+            borderRadius: '2px',
+            boxShadow: `0 0 12px ${borderColor}40`,
+            pointerEvents: 'none',
+            zIndex: 1000,
+            transition: 'border-color 0.1s',
+        };
+    };
+
+    const getCursor = () => {
+        switch (canvasMode) {
+            case 'MARQUEE_SELECT': return 'crosshair';
+            case 'MARQUEE_ZOOM': return 'zoom-in';
+            case 'MARQUEE_DELETE': return 'not-allowed';
+            default: return 'default';
+        }
+    };
+
     return (
         <Html fullscreen zIndexRange={[100, 0]} style={{ pointerEvents: 'none' }}>
             <div
-                style={{ width: '100vw', height: '100vh', pointerEvents: 'auto', cursor: 'crosshair' }}
+                ref={overlayRef}
+                style={{
+                    width: '100vw',
+                    height: '100vh',
+                    pointerEvents: 'auto',
+                    cursor: getCursor(),
+                    userSelect: 'none'
+                }}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
-                onPointerLeave={handlePointerUp}
+                onPointerLeave={handlePointerLeave}
             >
                 {isDragging && (
-                    <div style={{
-                        position: 'absolute',
-                        left: Math.min(startPos.x, currentPos.x),
-                        top: Math.min(startPos.y, currentPos.y),
-                        width: Math.abs(currentPos.x - startPos.x),
-                        height: Math.abs(currentPos.y - startPos.y),
-                        border: currentPos.x < startPos.x ? '1px dashed #10b981' : '1px solid #3b82f6',
-                        backgroundColor: currentPos.x < startPos.x ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                        pointerEvents: 'none'
-                    }} />
+                    <div style={getMarqueeStyle()} />
                 )}
             </div>
         </Html>
     );
 };
 
-// ----------------------------------------------------
-// Measure Tool
-// ----------------------------------------------------
+// ═══════════════════════════════════════════════════════════════
+// SHARED TOOL: MEASURE
+// This tool also exists in src/ui/tabs/DrawCanvasTab.jsx.
+// If modifying logic, update BOTH files and run Checkpoint F.
+// ═══════════════════════════════════════════════════════════════
 const MeasureTool = () => {
+    const appSettings = useStore(state => state.appSettings);
     const measurePts = useStore(state => state.measurePts);
     const addMeasurePt = useStore(state => state.addMeasurePt);
     const canvasMode = useStore(state => state.canvasMode);
@@ -1190,7 +1387,7 @@ const MeasureTool = () => {
             {measurePts.length >= 1 && (
                 <mesh position={measurePts[0]}>
                     <sphereGeometry args={[20, 16, 16]} />
-                    <meshBasicMaterial color="#eab308" />
+                    <meshBasicMaterial color={appSettings.selectionColor} />
                 </mesh>
             )}
 
@@ -1198,9 +1395,9 @@ const MeasureTool = () => {
                 <>
                     <mesh position={measurePts[1]}>
                         <sphereGeometry args={[20, 16, 16]} />
-                        <meshBasicMaterial color="#eab308" />
+                        <meshBasicMaterial color={appSettings.selectionColor} />
                     </mesh>
-                    <Line points={[measurePts[0], measurePts[1]]} color="#eab308" lineWidth={3} />
+                    <Line points={[measurePts[0], measurePts[1]]} color={appSettings.selectionColor} lineWidth={3} />
 
                     {(() => {
                         const mid = measurePts[0].clone().lerp(measurePts[1], 0.5);
@@ -1223,7 +1420,7 @@ const MeasureTool = () => {
                                     <planeGeometry args={[1000, 400]} />
                                     <meshBasicMaterial color="#1e293b" side={THREE.DoubleSide} opacity={0.8} transparent depthTest={false} />
                                 </mesh>
-                                <Text position={[0, 50, 1]} color="#eab308" fontSize={100} anchorX="center" anchorY="middle" outlineWidth={2} outlineColor="#0f172a" depthTest={false}>
+                                <Text position={[0, 50, 1]} color={appSettings.selectionColor} fontSize={100} anchorX="center" anchorY="middle" outlineWidth={2} outlineColor="#0f172a" depthTest={false}>
                                     Dist: {dist.toFixed(1)}mm
                                 </Text>
                                 <Text position={[0, -50, 1]} color="#cbd5e1" fontSize={60} anchorX="center" anchorY="middle" outlineWidth={2} outlineColor="#0f172a" depthTest={false}>
@@ -1240,10 +1437,13 @@ const MeasureTool = () => {
     );
 };
 
-// ----------------------------------------------------
-// Break Pipe Layer
-// ----------------------------------------------------
+// ═══════════════════════════════════════════════════════════════
+// SHARED TOOL: BREAK/CUT
+// This tool also exists in src/ui/tabs/DrawCanvasTab.jsx.
+// If modifying logic, update BOTH files and run Checkpoint F.
+// ═══════════════════════════════════════════════════════════════
 const BreakPipeLayer = () => {
+    const appSettings = useStore(state => state.appSettings);
     const canvasMode = useStore(state => state.canvasMode);
     const dataTable = useStore(state => state.dataTable);
     const { dispatch } = useAppContext();
@@ -1331,17 +1531,25 @@ const BreakPipeLayer = () => {
              {hoverPos && (
                  <mesh position={hoverPos}>
                      <sphereGeometry args={[20, 16, 16]} />
-                     <meshBasicMaterial color="#eab308" transparent opacity={0.6} depthTest={false} />
+                     <meshBasicMaterial color={appSettings.selectionColor} transparent opacity={0.6} depthTest={false} />
                  </mesh>
              )}
         </group>
     );
 };
 
-// ----------------------------------------------------
-// Endpoint Snap Layer
-// ----------------------------------------------------
+// ═══════════════════════════════════════════════════════════════
+// SHARED TOOL: CONNECT
+// This tool also exists in src/ui/tabs/DrawCanvasTab.jsx.
+// If modifying logic, update BOTH files and run Checkpoint F.
+// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// SHARED TOOL: STRETCH
+// This tool also exists in src/ui/tabs/DrawCanvasTab.jsx.
+// If modifying logic, update BOTH files and run Checkpoint F.
+// ═══════════════════════════════════════════════════════════════
 const EndpointSnapLayer = () => {
+    const appSettings = useStore(state => state.appSettings);
     const canvasMode = useStore(state => state.canvasMode);
     const setCanvasMode = useStore(state => state.setCanvasMode);
     const dataTable = useStore(state => state.dataTable);
@@ -1533,7 +1741,7 @@ const EndpointSnapLayer = () => {
                 return pts.map((pt, i) => (
                     <mesh key={`snap-${row._rowIndex}-${i}`} position={pt} renderOrder={999}>
                         <sphereGeometry args={[20, 16, 16]} />
-                        <meshBasicMaterial color="#eab308" transparent opacity={0.5} depthTest={false} />
+                        <meshBasicMaterial color={appSettings.selectionColor} transparent opacity={0.5} depthTest={false} />
                     </mesh>
                 ));
             })}
@@ -1665,6 +1873,7 @@ const PulsingGap = ({ gap, color }) => {
 // EP Labels
 // ----------------------------------------------------
 const EPLabelsLayer = () => {
+    const appSettings = useStore(state => state.appSettings);
     const showRowLabels = useStore(state => state.showRowLabels);
     const showRefLabels = useStore(state => state.showRefLabels);
     const dataTable = useStore(state => state.dataTable);
@@ -1688,7 +1897,7 @@ const EPLabelsLayer = () => {
                 return (
                     <React.Fragment key={`eplabels-${i}`}>
                         {showRowLabels && (
-                            <Text position={[pt.x, pt.y + 30, pt.z]} color="#eab308" fontSize={50} outlineWidth={2} outlineColor="#0f172a">
+                            <Text position={[pt.x, pt.y + 30, pt.z]} color={appSettings.selectionColor} fontSize={50} outlineWidth={2} outlineColor="#0f172a">
                                 R{el._rowIndex}
                             </Text>
                         )}
@@ -1708,6 +1917,7 @@ const EPLabelsLayer = () => {
 // Insert Support Layer
 // ----------------------------------------------------
 const InsertSupportLayer = () => {
+    const appSettings = useStore(state => state.appSettings);
     const canvasMode = useStore(state => state.canvasMode);
     const dataTable = useStore(state => state.dataTable);
     const { dispatch } = useAppContext();
@@ -1788,7 +1998,7 @@ const InsertSupportLayer = () => {
              {hoverPos && (
                  <mesh position={hoverPos}>
                      <sphereGeometry args={[20, 16, 16]} />
-                     <meshBasicMaterial color="#eab308" transparent opacity={0.6} depthTest={false} />
+                     <meshBasicMaterial color={appSettings.selectionColor} transparent opacity={0.6} depthTest={false} />
                  </mesh>
              )}
         </group>
@@ -1828,20 +2038,37 @@ const ContextMenu = () => {
             isolateSelected();
         } else if (action === 'DELETE') {
             dispatch({ type: 'DELETE_ELEMENTS', payload: { rowIndices: [contextMenu.rowIndex] } });
+        } else if (action === 'PROPERTIES') {
+            // Usually, selecting an element automatically shows the side inspector,
+            // so we just need to ensure it's open if it's currently closed.
+            window.dispatchEvent(new CustomEvent('open-side-inspector'));
         }
         closeContextMenu();
     };
 
     return (
         <div
-            className="absolute z-[100] bg-slate-900 border border-slate-700 shadow-xl rounded py-1 w-40"
+            className="fixed z-[100] bg-slate-900 border border-slate-700 shadow-xl rounded py-1 w-44"
             style={{ top: contextMenu.y, left: contextMenu.x }}
             onContextMenu={(e) => e.preventDefault()}
         >
             <div className="px-3 py-1 text-xs font-bold text-slate-500 border-b border-slate-800 mb-1">Row {contextMenu.rowIndex}</div>
-            <button onClick={() => handleAction('ISOLATE')} className="w-full text-left px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">Isolate</button>
-            <button onClick={() => handleAction('HIDE')} className="w-full text-left px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">Hide</button>
-            <button onClick={() => handleAction('DELETE')} className="w-full text-left px-3 py-1.5 text-sm text-red-400 hover:bg-red-900/40 hover:text-red-300 transition-colors mt-1 border-t border-slate-800">Delete</button>
+            <button onClick={() => handleAction('PROPERTIES')} className="w-full text-left px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                Property Panel
+            </button>
+            <button onClick={() => handleAction('ISOLATE')} className="w-full text-left px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400"><path d="M5 12s2.545-5 7-5c4.928 0 7 5 7 5s-2.072 5-7 5c-4.455 0-7-5-7-5z"/><path d="M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
+                Isolate
+            </button>
+            <button onClick={() => handleAction('HIDE')} className="w-full text-left px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+                Hide
+            </button>
+            <button onClick={() => handleAction('DELETE')} className="w-full text-left px-3 py-1.5 text-sm text-red-400 hover:bg-red-900/40 hover:text-red-300 transition-colors mt-1 border-t border-slate-800 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-400"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                Delete
+            </button>
         </div>
     );
 };
@@ -2120,13 +2347,33 @@ const ControlsAutoCenter = ({ externalRef }) => {
         RIGHT: interactionMode === 'PAN' ? THREE.MOUSE.ROTATE : THREE.MOUSE.PAN
     };
 
+  // When CTRL is pressed, override mouse buttons to null
+  // so that OrbitControls doesn't hijack the drag
+  const [ctrlPressed, setCtrlPressed] = useState(false);
+  useEffect(() => {
+      const down = (e) => {
+          if (e.key === 'Control' || e.key === 'Meta') setCtrlPressed(true);
+      };
+      const up = (e) => {
+          if (e.key === 'Control' || e.key === 'Meta') setCtrlPressed(false);
+      };
+      window.addEventListener('keydown', down);
+      window.addEventListener('keyup', up);
+      return () => {
+          window.removeEventListener('keydown', down);
+          window.removeEventListener('keyup', up);
+      }
+  }, []);
+
+  const currentMouseButtons = ctrlPressed ? { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: null } : mouseButtons;
+
     return <OrbitControls
                 ref={(c) => { controlsRef.current = c; if (externalRef) externalRef.current = c; }}
                 enabled={controlsEnabled}
                 makeDefault
                 enableDamping
                 dampingFactor={0.1}
-                mouseButtons={mouseButtons}
+                mouseButtons={currentMouseButtons}
             />;
 };
 
@@ -2136,7 +2383,14 @@ export function CanvasTab() {
   const orthoMode = useStore(state => state.orthoMode);
 
 
-  const [rightPanelOpen, setRightPanelOpen] = useState(false);
+  const showSideInspector = useStore(state => state.showSideInspector);
+  const setShowSideInspector = useStore(state => state.setShowSideInspector);
+
+  useEffect(() => {
+      const handleOpenSideInspector = () => setShowSideInspector(true);
+      window.addEventListener('open-side-inspector', handleOpenSideInspector);
+      return () => window.removeEventListener('open-side-inspector', handleOpenSideInspector);
+  }, [setShowSideInspector]);
   const proposals = useStore(state => state.proposals);
   const [currentIssueIndex, setCurrentIssueIndex] = useState(0);
   const dragOrbitRef = useRef(null); // shared ref for orbit controls disable during drag
@@ -2215,12 +2469,29 @@ export function CanvasTab() {
           if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
 
           switch (e.key.toLowerCase()) {
+              case '`':
+                  const debugEnabled = !useStore.getState().appSettings.debugConsoleEnabled;
+                  useStore.getState().updateAppSettings({ debugConsoleEnabled: debugEnabled });
+                  if (debugEnabled) dbg.enable(); else dbg.disable();
+                  break;
               case 'escape':
                   setCanvasMode('VIEW');
                   clearMultiSelect();
                   useStore.getState().setSelected(null);
+                  useStore.getState().setClippingPlaneEnabled(false);
+                  useStore.getState().setShowRowLabels(false);
+                  useStore.getState().setShowRefLabels(false);
                   break;
-              case 'c': setCanvasMode(canvasMode === 'CONNECT' ? 'VIEW' : 'CONNECT'); break;
+              case 'r':
+                  const isLabelsOn = useStore.getState().showRowLabels;
+                  useStore.getState().setShowRowLabels(!isLabelsOn);
+                  if (!isLabelsOn) useStore.getState().setTranslucentMode(true);
+                  break;
+              case 'c':
+                  if (!e.ctrlKey && !e.metaKey) {
+                      setCanvasMode(canvasMode === 'CONNECT' ? 'VIEW' : 'CONNECT');
+                  }
+                  break;
               case 't': setCanvasMode(canvasMode === 'STRETCH' ? 'VIEW' : 'STRETCH'); break;
               case 'b': setCanvasMode(canvasMode === 'BREAK' ? 'VIEW' : 'BREAK'); break;
               case 'm': setCanvasMode(canvasMode === 'MEASURE' ? 'VIEW' : 'MEASURE'); break;
@@ -2411,6 +2682,15 @@ export function CanvasTab() {
       fixLog.forEach(log => dispatch({ type: "ADD_LOG", payload: log }));
   };
 
+  const executeOverlapSolver = () => {
+      pushHistory('Overlap Solver');
+      import('../../engine/OverlapSolver.js').then(({ resolveOverlaps }) => {
+          const { updatedTable, fixLog } = resolveOverlaps(dataTable);
+          useStore.getState().setDataTable(updatedTable);
+          dispatch({ type: 'APPLY_GAP_FIX', payload: { updatedTable } });
+          fixLog.forEach(log => dispatch({ type: "ADD_LOG", payload: log }));
+      });
+  };
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] w-full overflow-hidden bg-slate-950 rounded-lg border border-slate-800 shadow-inner relative mt-[-2rem]">
@@ -2431,9 +2711,11 @@ export function CanvasTab() {
       <div className="absolute top-24 right-4 z-20 flex flex-col gap-4 items-end pointer-events-none h-[calc(100vh-10rem)] overflow-y-auto w-80 pl-2">
           <div className="pointer-events-auto flex flex-col gap-4 w-full items-end">
               <GapSidebar />
-              <ClippingPanelUI />
           </div>
       </div>
+
+      {/* Floating Overlays */}
+      <ClippingPanelUI />
 
       <PipelinePropertyPanel />
       <LogDrawer />
@@ -2441,6 +2723,8 @@ export function CanvasTab() {
       <SettingsModal />
       <ContextMenu />
       <NavigationPanel />
+
+      <DebugConsole />
 
       <div
         className="absolute z-40 pointer-events-auto shadow-lg"
@@ -2458,9 +2742,10 @@ export function CanvasTab() {
             onFix6mm={executeFix6mm}
             onFix25mm={executeFix25mm}
             onAutoRef={executeAutoPipelineRef}
+            onOverlapSolver={executeOverlapSolver}
             onAutoCenter={handleAutoCenter}
-            onToggleSideInspector={() => setRightPanelOpen(!rightPanelOpen)}
-            showSideInspector={rightPanelOpen}
+            onToggleSideInspector={() => setShowSideInspector(!showSideInspector)}
+            showSideInspector={showSideInspector}
             onPointerDown={handleToolbarPointerDown}
         />
       </div>
@@ -2502,25 +2787,29 @@ export function CanvasTab() {
         ) : (
             <PerspectiveCamera makeDefault position={[5000, 5000, 5000]} fov={appSettings.cameraFov} near={appSettings.cameraNear || 1} far={appSettings.cameraFar || 500000} />
         )}
-        <color attach="background" args={['#020617']} />
+        <color attach="background" args={[appSettings.backgroundColor || '#020617']} />
         <ambientLight intensity={0.6} />
         <directionalLight position={[1000, 1000, 500]} intensity={1.5} />
         <directionalLight position={[-1000, -1000, -500]} intensity={0.5} />
         {appSettings.showGrid && <gridHelper args={[10000, 100]} position={[0, 0, 0]} />}
         {appSettings.showAxes && <axesHelper args={[2000]} />}
 
-        <InstancedPipes />
-        <ImmutableComponents />
+        {appState.stage2Data && appState.stage2Data.length > 0 && (
+            <>
+                <InstancedPipes />
+                <ImmutableComponents />
 
-        <EndpointSnapLayer />
-        <GapRadarLayer />
-        <GlobalSnapLayer />
-        <MeasureTool />
-        <BreakPipeLayer />
-        <InsertSupportLayer />
-        <EPLabelsLayer />
-        <MarqueeLayer />
-        <ClippingPlanesLayer />
+                <EndpointSnapLayer />
+                <GapRadarLayer />
+                <GlobalSnapLayer />
+                <MeasureTool />
+                <BreakPipeLayer />
+                <InsertSupportLayer />
+                <EPLabelsLayer />
+                <MarqueeLayer />
+                <ClippingPlanesLayer />
+            </>
+        )}
 
         {(() => {
             const allIssues = [

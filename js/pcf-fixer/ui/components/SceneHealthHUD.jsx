@@ -12,6 +12,7 @@ const getDist = (p1, p2) => {
 export const SceneHealthHUD = () => {
   const dataTable = useStore(state => state.dataTable);
   const setShowGapRadar = useStore(state => state.setShowGapRadar);
+  const multiSelectedIds = useStore(state => state.multiSelectedIds);
 
   const stats = useMemo(() => {
     let pipes = 0;
@@ -88,10 +89,17 @@ export const SceneHealthHUD = () => {
         <span className="text-slate-300 font-bold bg-slate-800 px-1.5 py-0.5 rounded-full">{stats.supports}</span>
       </div>
 
-      <div className="flex items-center gap-1.5 px-3 py-1">
+      <div className="flex items-center gap-1.5 px-3 py-1 border-r border-slate-700/50">
         <span className={`${stats.disconnected > 0 ? 'text-red-400' : 'text-slate-500'} font-medium`}>Disconnected</span>
         <span className={`${stats.disconnected > 0 ? 'bg-red-900/40 text-red-300' : 'text-slate-600 bg-slate-800/50'} font-bold px-1.5 py-0.5 rounded-full`}>
             {stats.disconnected}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-1.5 px-3 py-1">
+        <span className={`${multiSelectedIds?.length > 0 ? 'text-blue-400' : 'text-slate-500'} font-medium`}>Selected</span>
+        <span className={`${multiSelectedIds?.length > 0 ? 'bg-blue-900/40 text-blue-300' : 'text-slate-600 bg-slate-800/50'} font-bold px-1.5 py-0.5 rounded-full`}>
+            {multiSelectedIds?.length || 0}
         </span>
       </div>
 

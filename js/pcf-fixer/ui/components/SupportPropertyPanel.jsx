@@ -22,7 +22,8 @@ export const SupportPropertyPanel = () => {
     return row && (row.type || '').toUpperCase() === 'SUPPORT';
   });
 
-  const isVisible = activeIds.length > 0 && selectedSupports.length === activeIds.length;
+  const showSideInspector = useStore(state => state.showSideInspector);
+  const isVisible = showSideInspector && activeIds.length > 0 && selectedSupports.length === activeIds.length;
 
   useEffect(() => {
     if (isVisible && selectedSupports.length > 0) {
@@ -58,6 +59,11 @@ export const SupportPropertyPanel = () => {
 
     dispatch({ type: "ADD_LOG", payload: { stage: "BATCH_EDIT", type: "Applied/Fix", message: `Batch updated CA attributes for ${selectedSupports.length} supports.` } });
     clearMultiSelect();
+  };
+
+  const handleClose = () => {
+      setSelected(null);
+      clearMultiSelect();
   };
 
   const handleDelete = () => {
@@ -96,7 +102,7 @@ export const SupportPropertyPanel = () => {
             </button>
             <span className="text-slate-200 font-bold text-sm">{selectedSupports.length} Supports Selected</span>
         </div>
-        <button onClick={clearSelection} className="text-slate-400 hover:text-white" title="Deselect All">✕</button>
+        <button onClick={handleClose} className="text-slate-400 hover:text-white" title="Deselect All">✕</button>
       </div>
 
       {!isCollapsed && (

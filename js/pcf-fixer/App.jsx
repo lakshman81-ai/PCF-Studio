@@ -28,6 +28,26 @@ function MainApp() {
     }
   }, [state.stage2Data, setZustandData]);
 
+  // Hook for external applications to inject data directly into the fixer.
+  React.useEffect(() => {
+      window.__pcfSetDataTable = (rows) => {
+          useStore.getState().setExternalDataTable(rows);
+      };
+
+      const handleExternalData = (e) => {
+          // When external data is loaded via window.__pcfSetDataTable, sync it to AppContext as well
+          const components = e.detail.components;
+          dispatch({ type: "SET_STAGE_2_DATA", payload: components });
+          setActiveTab('fixer'); // Auto-switch to fixer tab to view the injected data
+      };
+      window.addEventListener('external-data-loaded', handleExternalData);
+
+      return () => {
+          delete window.__pcfSetDataTable;
+          window.removeEventListener('external-data-loaded', handleExternalData);
+      };
+  }, [dispatch]);
+
   return (
     <div className="min-h-screen bg-slate-100 font-sans flex flex-col pb-12">
       <Header />

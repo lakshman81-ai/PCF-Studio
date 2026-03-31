@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { useAppContext } from '../../store/AppContext';
+import { dbg } from '../../utils/debugGate';
 
 const ToolGroup = ({ title, shortTitle, children }) => {
     const [collapsed, setCollapsed] = useState(false);
@@ -59,7 +60,7 @@ const TextBtn = ({ onClick, title, label, color = 'slate' }) => {
 
 
 
-export function ToolbarRibbon({ onFix6mm, onFix25mm, onAutoRef, onAutoCenter, onToggleSideInspector, showSideInspector, onPointerDown }) {
+export function ToolbarRibbon({ onFix6mm, onFix25mm, onAutoRef, onAutoCenter, onToggleSideInspector, showSideInspector, onPointerDown, onOverlapSolver }) {
     const { canvasMode, setCanvasMode, orthoMode, toggleOrthoMode, multiSelectedIds, translucentMode, setTranslucentMode, colorMode, setColorMode, setDrawMode } = useStore();
     const { state, dispatch } = useAppContext();
     const showDrawCanvasIcon = state.config?.enableDrawCanvas !== false;
@@ -138,6 +139,7 @@ export function ToolbarRibbon({ onFix6mm, onFix25mm, onAutoRef, onAutoCenter, on
                                 <TextBtn onClick={onFix6mm} color="orange" label="Fix 6mm" title="Auto-close all gaps ≤ 6mm" />
                                 <TextBtn onClick={onFix25mm} color="red" label="Fix 25mm" title="Insert pipe spool for gaps 6-25mm" />
                                 <TextBtn onClick={onAutoRef} color="blue" label="Auto Pipe Ref" title="Auto-assign Pipeline Refs to blank components on branch" />
+                                <TextBtn onClick={onOverlapSolver} color="purple" label="Overlap Solver" title="Trim pipes overlapping with rigid fittings" />
                             </div>
                         </ToolGroup>
                         <ToolGroup title="Visuals" shortTitle="VIS">
@@ -206,10 +208,18 @@ export function ToolbarRibbon({ onFix6mm, onFix25mm, onAutoRef, onAutoCenter, on
                         </ToolGroup>
 
                         <ToolGroup title="Labels" shortTitle="LBL">
-                            <ToolBtn active={useStore.getState().showRowLabels} onClick={() => useStore.getState().setShowRowLabels(!useStore.getState().showRowLabels)} title="Toggle Row No. (R)">
+                            <ToolBtn active={useStore.getState().showRowLabels} onClick={() => {
+                                const current = useStore.getState().showRowLabels;
+                                useStore.getState().setShowRowLabels(!current);
+                                if (!current) useStore.getState().setTranslucentMode(true);
+                            }} color="amber" title="Toggle Row No. (R)">
                                 <div className="font-bold text-xs">R</div>
                             </ToolBtn>
-                            <ToolBtn active={useStore.getState().showRefLabels} onClick={() => useStore.getState().setShowRefLabels(!useStore.getState().showRefLabels)} title="Toggle Ref No.">
+                            <ToolBtn active={useStore.getState().showRefLabels} onClick={() => {
+                                const current = useStore.getState().showRefLabels;
+                                useStore.getState().setShowRefLabels(!current);
+                                if (!current) useStore.getState().setTranslucentMode(true);
+                            }} color="blue" title="Toggle Pipeline Ref">
                                 <div className="font-bold text-[10px]">Ref</div>
                             </ToolBtn>
                         </ToolGroup>
@@ -227,10 +237,18 @@ export function ToolbarRibbon({ onFix6mm, onFix25mm, onAutoRef, onAutoCenter, on
                                     <div className="w-px h-6 bg-slate-700 mx-1 self-center"></div>
                                 </>
                             )}
-                            <ToolBtn active={canvasMode === 'MARQUEE_SELECT'} onClick={() => setCanvasMode(canvasMode === 'MARQUEE_SELECT' ? 'VIEW' : 'MARQUEE_SELECT')} color="blue" title="Box Select">
+                            <ToolBtn active={canvasMode === 'MARQUEE_SELECT'} onClick={() => {
+                                const next = canvasMode === 'MARQUEE_SELECT' ? 'VIEW' : 'MARQUEE_SELECT';
+                                dbg.tool('MARQUEE_SELECT', `Button clicked → ${next}`);
+                                setCanvasMode(next);
+                            }} color="blue" title="Box Select">
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeDasharray="4 4" /></svg>
                             </ToolBtn>
-                            <ToolBtn active={canvasMode === 'MARQUEE_ZOOM'} onClick={() => setCanvasMode(canvasMode === 'MARQUEE_ZOOM' ? 'VIEW' : 'MARQUEE_ZOOM')} color="indigo" title="Box Zoom">
+                            <ToolBtn active={canvasMode === 'MARQUEE_ZOOM'} onClick={() => {
+                                const next = canvasMode === 'MARQUEE_ZOOM' ? 'VIEW' : 'MARQUEE_ZOOM';
+                                dbg.tool('MARQUEE_ZOOM', `Button clicked → ${next}`);
+                                setCanvasMode(next);
+                            }} color="indigo" title="Box Zoom">
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><rect x="8" y="8" width="6" height="6" strokeDasharray="2 2"/></svg>
                             </ToolBtn>
                             <div className="w-px h-6 bg-slate-700 mx-1 self-center"></div>
@@ -240,26 +258,53 @@ export function ToolbarRibbon({ onFix6mm, onFix25mm, onAutoRef, onAutoCenter, on
                         </ToolGroup>
 
                         <ToolGroup title="Edit Modes" shortTitle="EDIT">
-                            <ToolBtn active={canvasMode === 'CONNECT'} onClick={() => setCanvasMode(canvasMode === 'CONNECT' ? 'VIEW' : 'CONNECT')} color="amber" title="Connect (C)">
+                            <ToolBtn active={canvasMode === 'CONNECT'} onClick={() => {
+                                const next = canvasMode === 'CONNECT' ? 'VIEW' : 'CONNECT';
+                                dbg.tool('CONNECT', `Button clicked → ${next}`);
+                                setCanvasMode(next);
+                            }} color="amber" title="Connect (C)">
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                             </ToolBtn>
-                            <ToolBtn active={canvasMode === 'STRETCH'} onClick={() => setCanvasMode(canvasMode === 'STRETCH' ? 'VIEW' : 'STRETCH')} color="emerald" title="Stretch (T)">
+                            <ToolBtn active={canvasMode === 'STRETCH'} onClick={() => {
+                                const next = canvasMode === 'STRETCH' ? 'VIEW' : 'STRETCH';
+                                dbg.tool('STRETCH', `Button clicked → ${next}`);
+                                setCanvasMode(next);
+                            }} color="emerald" title="Stretch (T)">
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="M15 16l4-4-4-4"/><path d="M9 8l-4 4 4 4"/></svg>
                             </ToolBtn>
-                            <ToolBtn active={canvasMode === 'BREAK'} onClick={() => setCanvasMode(canvasMode === 'BREAK' ? 'VIEW' : 'BREAK')} color="red" title="Break (B)">
+                            <ToolBtn active={canvasMode === 'BREAK'} onClick={() => {
+                                const next = canvasMode === 'BREAK' ? 'VIEW' : 'BREAK';
+                                dbg.tool('BREAK', `Button clicked → ${next}`);
+                                setCanvasMode(next);
+                            }} color="red" title="Break (B)">
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
                             </ToolBtn>
-                            <ToolBtn active={canvasMode === 'MEASURE'} onClick={() => setCanvasMode(canvasMode === 'MEASURE' ? 'VIEW' : 'MEASURE')} color="amber" title="Measure (M)">
+                            <ToolBtn active={canvasMode === 'MEASURE'} onClick={() => {
+                                const next = canvasMode === 'MEASURE' ? 'VIEW' : 'MEASURE';
+                                dbg.tool('MEASURE', `Button clicked → ${next}`);
+                                setCanvasMode(next);
+                            }} color="amber" title="Measure (M)">
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 1 0 2.829 2.828z"/><path d="m6.3 14.5-4 4"/><path d="m16 5.3-4 4"/></svg>
                             </ToolBtn>
                             <div className="w-px h-6 bg-slate-700 mx-1 self-center"></div>
-                            <ToolBtn active={useStore.getState().clippingPlaneEnabled} onClick={() => useStore.getState().setClippingPlaneEnabled(!useStore.getState().clippingPlaneEnabled)} color="slate" title="Toggle Section Box">
+                            <ToolBtn active={useStore.getState().clippingPlaneEnabled} onClick={() => {
+                                dbg.tool('CLIPPING_PLANE', `Button clicked → ${!useStore.getState().clippingPlaneEnabled}`);
+                                useStore.getState().setClippingPlaneEnabled(!useStore.getState().clippingPlaneEnabled)
+                            }} color="slate" title="Toggle Section Box">
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3v18"/><path d="M3 12h18"/><path d="M3 3h18v18H3z"/></svg>
                             </ToolBtn>
-                            <ToolBtn active={canvasMode === 'INSERT_SUPPORT'} onClick={() => setCanvasMode(canvasMode === 'INSERT_SUPPORT' ? 'VIEW' : 'INSERT_SUPPORT')} color="emerald" title="Insert Support (I)">
+                            <ToolBtn active={canvasMode === 'INSERT_SUPPORT'} onClick={() => {
+                                const next = canvasMode === 'INSERT_SUPPORT' ? 'VIEW' : 'INSERT_SUPPORT';
+                                dbg.tool('INSERT_SUPPORT', `Button clicked → ${next}`);
+                                setCanvasMode(next);
+                            }} color="emerald" title="Insert Support (I)">
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22V8"/><path d="M8 8h8"/><path d="M12 8l-3 -6h6z"/></svg>
                             </ToolBtn>
-                            <ToolBtn active={canvasMode === 'ASSIGN_PIPELINE'} onClick={() => setCanvasMode(canvasMode === 'ASSIGN_PIPELINE' ? 'VIEW' : 'ASSIGN_PIPELINE')} color="blue" title="Assign Pipeline Ref">
+                            <ToolBtn active={canvasMode === 'ASSIGN_PIPELINE'} onClick={() => {
+                                const next = canvasMode === 'ASSIGN_PIPELINE' ? 'VIEW' : 'ASSIGN_PIPELINE';
+                                dbg.tool('ASSIGN_PIPELINE', `Button clicked → ${next}`);
+                                setCanvasMode(next);
+                            }} color="blue" title="Assign Pipeline Ref">
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                             </ToolBtn>
                         </ToolGroup>

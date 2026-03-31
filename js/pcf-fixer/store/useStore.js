@@ -3,6 +3,65 @@ import { create } from 'zustand';
 // Decoupled, Atomic Zustand store primarily aimed at driving high-performance
 // visual updates for the 3D Canvas without forcing global React Context re-renders.
 
+export const THEME_PRESETS = {
+    DARK_INDUSTRIAL: {
+        label: 'Dark Industrial',
+        backgroundColor: '#020617',
+        selectionColor: '#22d3ee',
+        selectionOpacity: 0.35,
+        hoverColor: '#a78bfa',
+        gridColor1: '#1e293b',
+        gridColor2: '#0f172a',
+        componentColors: {
+            PIPE: '#cbd5e1', BEND: '#94a3b8', TEE: '#94a3b8',
+            OLET: '#64748b', REDUCER: '#64748b', VALVE: '#3b82f6',
+            FLANGE: '#60a5fa', SUPPORT: '#10b981'
+        }
+    },
+    LIGHT_STUDIO: {
+        label: 'Light Studio',
+        backgroundColor: '#f1f5f9',
+        selectionColor: '#2563eb',
+        selectionOpacity: 0.4,
+        hoverColor: '#7c3aed',
+        gridColor1: '#94a3b8',
+        gridColor2: '#cbd5e1',
+        componentColors: {
+            PIPE: '#475569', BEND: '#334155', TEE: '#334155',
+            OLET: '#1e293b', REDUCER: '#1e293b', VALVE: '#1d4ed8',
+            FLANGE: '#2563eb', SUPPORT: '#059669'
+        }
+    },
+    MIDNIGHT: {
+        label: 'Midnight',
+        backgroundColor: '#0c0a09',
+        selectionColor: '#f472b6',
+        selectionOpacity: 0.35,
+        hoverColor: '#fbbf24',
+        gridColor1: '#1c1917',
+        gridColor2: '#0c0a09',
+        componentColors: {
+            PIPE: '#a8a29e', BEND: '#78716c', TEE: '#78716c',
+            OLET: '#57534e', REDUCER: '#57534e', VALVE: '#6366f1',
+            FLANGE: '#818cf8', SUPPORT: '#34d399'
+        }
+    },
+    BLUEPRINT: {
+        label: 'Blueprint',
+        backgroundColor: '#172554',
+        selectionColor: '#fbbf24',
+        selectionOpacity: 0.4,
+        hoverColor: '#34d399',
+        gridColor1: '#1e3a5f',
+        gridColor2: '#1e3a8a',
+        componentColors: {
+            PIPE: '#93c5fd', BEND: '#60a5fa', TEE: '#60a5fa',
+            OLET: '#3b82f6', REDUCER: '#3b82f6', VALVE: '#f9a8d4',
+            FLANGE: '#f472b6', SUPPORT: '#a7f3d0'
+        }
+    }
+};
+
 export const useStore = create((set, get) => ({
   // The global source of truth for raw pipe geometries
   dataTable: [],
@@ -57,7 +116,21 @@ export const useStore = create((set, get) => ({
   setShowSettings: (val) => set({ showSettings: val }),
 
   canvasMode: 'VIEW', // 'VIEW' | 'CONNECT' | 'STRETCH' | 'BREAK' | 'INSERT_SUPPORT' | 'MEASURE' | 'MARQUEE_SELECT' | 'MARQUEE_ZOOM' | 'MARQUEE_DELETE'
-  setCanvasMode: (mode) => { get().logTestEvent('MODE_CHANGE', { mode }); set({ canvasMode: mode }); },
+  setCanvasMode: (mode) => {
+      const prev = get().canvasMode;
+      if (get().logTestEvent) get().logTestEvent('MODE_CHANGE', { from: prev, to: mode });
+      // Clean up previous mode's state
+      const cleanup = {};
+      if (prev === 'MEASURE' || mode !== prev) {
+          cleanup.measurePts = [];
+      }
+      if (prev !== mode) {
+          cleanup.cursorSnapPoint = null;
+      }
+      set({ ...cleanup, canvasMode: mode });
+      // Debug gate
+      if (typeof dbg !== 'undefined') dbg.tool(mode, `Mode: ${prev} → ${mode}`);
+  },
 
 
   // Global Undo/Redo stack for UI actions
@@ -169,10 +242,17 @@ export const useStore = create((set, get) => ({
   setShowSettings: (show) => set({ showSettings: show }),
 
   appSettings: {
+    theme: 'DARK_INDUSTRIAL',
+    selectionColor: '#22d3ee',
+    selectionOpacity: 0.35,
+    hoverColor: '#a78bfa',
+    backgroundColor: '#020617',
+    debugConsoleEnabled: false,
     gridSnapResolution: 100,
     cameraFov: 45,
     cameraNear: 1,
     cameraFar: 500000,
+    autoBendEnabled: false,
     centerOrbitOnSelect: true,
     showGrid: true,
     showAxes: true,
@@ -191,6 +271,30 @@ export const useStore = create((set, get) => ({
     }
   },
   updateAppSettings: (newSettings) => set(state => ({ appSettings: { ...state.appSettings, ...newSettings } })),
+
+  applyTheme: (themeKey) => {
+      const preset = THEME_PRESETS[themeKey];
+      if (!preset) {
+          if (typeof window !== 'undefined' && window.__dbg_enabled) {
+              console.log(`%c[ERROR] THEME: Unknown theme: ${themeKey}`, 'color: #f87171; font-weight: bold');
+          }
+          return;
+      }
+      if (typeof window !== 'undefined' && window.__dbg_enabled) {
+          console.log(`%c[STATE] 📊 THEME: Applying theme: ${themeKey}`, 'color: #34d399; font-weight: bold', preset);
+      }
+      set(state => ({
+          appSettings: {
+              ...state.appSettings,
+              theme: themeKey,
+              selectionColor: preset.selectionColor,
+              selectionOpacity: preset.selectionOpacity,
+              hoverColor: preset.hoverColor,
+              backgroundColor: preset.backgroundColor,
+              componentColors: { ...preset.componentColors },
+          }
+      }));
+  },
 
   // Measure tool
   contextMenu: null, // { x, y, rowIndex } or null
@@ -219,6 +323,49 @@ export const useStore = create((set, get) => ({
   // Sync function to mirror AppContext if required,
   // or act as the standalone state manager.
   setDataTable: (table) => { get().logTestEvent('DATA_TABLE_CHANGE', { length: table.length }); set({ dataTable: table }); },
+
+  // Set datatable from external RC tab (converts RC rows to Smart Fixer components)
+  setExternalDataTable: (rows) => {
+      const components = rows.map((row, idx) => {
+          // Convert RC datatable row to Smart Fixer component format
+          const points = [];
+          if (row.ep1) points.push(row.ep1);
+          if (row.ep2) points.push(row.ep2);
+
+          return {
+              id: `rc-comp-${idx}`,
+              _rowIndex: idx + 1,
+              type: row.type || 'UNKNOWN',
+              bore: row.bore ?? null,
+              branchBore: row.branchBore ?? null,
+              points: points,
+              ep1: row.ep1,
+              ep2: row.ep2,
+              cp: row.cp || null,
+              bp: row.bp || null,
+              attributes: {
+                  'COMPONENT-ATTRIBUTE1': row.ca?.[1] || '',
+                  'COMPONENT-ATTRIBUTE2': row.ca?.[2] || '',
+                  'COMPONENT-ATTRIBUTE3': row.ca?.[3] || '',
+                  'COMPONENT-ATTRIBUTE4': row.ca?.[4] || '',
+                  'COMPONENT-ATTRIBUTE5': row.ca?.[5] || '',
+                  'COMPONENT-ATTRIBUTE6': row.ca?.[6] || '',
+                  'COMPONENT-ATTRIBUTE7': row.ca?.[7] || '',
+                  'COMPONENT-ATTRIBUTE8': row.ca?.[8] || '',
+                  'COMPONENT-ATTRIBUTE9': row.ca?.[9] || '',
+                  'COMPONENT-ATTRIBUTE10': row.ca?.[10] || '',
+                  'SUPPORT_NAME': row.supportName || '',
+                  'SUPPORT_GUID': row.supportGuid || '',
+                  'SKEY': row.skey || '',
+                  'PIPELINE_REFERENCE': row.pipelineRef || ''
+              },
+              fixingAction: '',
+              _hasUnappliedFix: false
+          };
+      });
+      get().setDataTable(components);
+      window.dispatchEvent(new CustomEvent('external-data-loaded', { detail: { components } }));
+  },
 
   setProposals: (proposals) => set({ proposals }),
 

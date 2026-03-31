@@ -5,21 +5,43 @@ import { useAppContext } from '../../store/AppContext';
 export const SideInspector = () => {
   const { state: appState, dispatch } = useAppContext();
   const selectedElementId = useStore(state => state.selectedElementId);
+  const multiSelectedIds = useStore(state => state.multiSelectedIds);
   const dataTable = useStore(state => state.dataTable);
   const setSelected = useStore(state => state.setSelected);
-
+  const clearMultiSelect = useStore(state => state.clearMultiSelect);
   const showSideInspector = useStore(state => state.showSideInspector);
   const pushHistory = useStore(state => state.pushHistory);
 
   const [formData, setFormData] = useState(null);
   const [isChanged, setIsChanged] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
-  if (!showSideInspector || !selectedElementId) return null;
+  const activeIds = multiSelectedIds.length > 0 ? multiSelectedIds : (selectedElementId ? [selectedElementId] : []);
+  const isMulti = activeIds.length > 1;
 
   useEffect(() => {
-    if (selectedElementId) {
-      const el = dataTable.find(r => r._rowIndex === selectedElementId);
-      if (el) {
+    if (activeIds.length > 0 && showSideInspector) {
+      const elements = activeIds.map(id => dataTable.find(r => r._rowIndex === id)).filter(Boolean);
+
+      if (elements.length === 0 || elements.every(el => el.type === 'SUPPORT')) {
+          setFormData(null);
+          return;
+      }
+
+      if (isMulti) {
+        // Multi-select mode: show empty strings for conflicting values, or common values if they match
+        const commonData = { _isMulti: true, _rowIndices: activeIds };
+        const fields = ['bore', 'CA1', 'CA2', 'CA3', 'CA4', 'CA5', 'CA6', 'CA7', 'CA8', 'CA9', 'CA10', 'CA97', 'CA98', 'PIPING_CLASS', 'RATING', 'LINENO_KEY', 'skey', 'pipelineRef'];
+
+        fields.forEach(f => {
+            const firstVal = elements[0][f];
+            const allMatch = elements.every(el => el[f] === firstVal);
+            commonData[f] = allMatch ? (firstVal || '') : '';
+        });
+
+        setFormData(commonData);
+      } else {
+        const el = elements[0];
         setFormData({
           ep1: el.ep1 ? { ...el.ep1 } : null,
           ep2: el.ep2 ? { ...el.ep2 } : null,
@@ -46,12 +68,12 @@ export const SideInspector = () => {
           type: el.type || '',
           _rowIndex: el._rowIndex
         });
-        setIsChanged(false);
       }
+      setIsChanged(false);
     } else {
       setFormData(null);
     }
-  }, [selectedElementId, dataTable]);
+  }, [selectedElementId, multiSelectedIds, dataTable, showSideInspector]);
 
   const handleChange = (field, subfield, value) => {
     setFormData(prev => {
@@ -69,44 +91,50 @@ export const SideInspector = () => {
   const handleApply = () => {
     if (!formData) return;
 
-    pushHistory('Inspector Edit');
+    pushHistory(isMulti ? 'Bulk Inspector Edit' : 'Inspector Edit');
 
-    // Update both stores
-    dispatch({
-      type: 'UPDATE_STAGE2_ROW_COORDS',
-      payload: {
-        rowIndex: formData._rowIndex,
-        coords: formData
-      }
-    });
+    let updatedTable = [...dataTable];
 
-    const updatedTable = dataTable.map(r =>
-      r._rowIndex === formData._rowIndex ? { ...r, ...formData } : r
-    );
+    if (isMulti) {
+        // Apply only changed fields to all selected elements
+        // In this simple version, applying overwrites the fields on all selected items
+        const fieldsToUpdate = ['bore', 'CA1', 'CA2', 'CA3', 'CA4', 'CA5', 'CA6', 'CA7', 'CA8', 'CA9', 'CA10', 'CA97', 'CA98', 'PIPING_CLASS', 'RATING', 'LINENO_KEY', 'skey', 'pipelineRef'];
+
+        formData._rowIndices.forEach(idx => {
+            const tableIdx = updatedTable.findIndex(r => r._rowIndex === idx);
+            if (tableIdx !== -1) {
+                const updatedRow = { ...updatedTable[tableIdx] };
+                fieldsToUpdate.forEach(f => {
+                    if (formData[f] !== '') updatedRow[f] = formData[f];
+                });
+                updatedTable[tableIdx] = updatedRow;
+                dispatch({ type: 'UPDATE_STAGE2_ROW_COORDS', payload: { rowIndex: idx, coords: updatedRow } });
+            }
+        });
+
+        dispatch({ type: "ADD_LOG", payload: { stage: "INSPECTOR", type: "Applied/Fix", message: `Updated properties for ${formData._rowIndices.length} rows.` } });
+    } else {
+        const tableIdx = updatedTable.findIndex(r => r._rowIndex === formData._rowIndex);
+        if (tableIdx !== -1) {
+            updatedTable[tableIdx] = { ...updatedTable[tableIdx], ...formData };
+            dispatch({ type: 'UPDATE_STAGE2_ROW_COORDS', payload: { rowIndex: formData._rowIndex, coords: formData } });
+        }
+        dispatch({ type: "ADD_LOG", payload: { stage: "INSPECTOR", type: "Applied/Fix", message: `Updated properties for row ${formData._rowIndex}.` } });
+    }
+
     useStore.getState().setDataTable(updatedTable);
-
-    dispatch({ type: "ADD_LOG", payload: { stage: "INSPECTOR", type: "Applied/Fix", message: `Updated properties for row ${formData._rowIndex}.` } });
-
     setIsChanged(false);
   };
 
-  const copyCoords = () => {
-    if (!formData) return;
-    const { ep1, ep2 } = formData;
-    let text = `Row ${formData._rowIndex}\n`;
-    if (ep1) text += `EP1: (${ep1.x}, ${ep1.y}, ${ep1.z})\n`;
-    if (ep2) text += `EP2: (${ep2.x}, ${ep2.y}, ${ep2.z})`;
-    navigator.clipboard.writeText(text);
-    // Optional: toast here
-  };
-
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
   const handleZoomToSelection = () => {
     if (!formData) return;
-    const { ep1, ep2 } = formData;
 
-    // Fallback if no EPs
+    if (isMulti) {
+        window.dispatchEvent(new CustomEvent('canvas-auto-center'));
+        return;
+    }
+
+    const { ep1, ep2 } = formData;
     if (!ep1 && !ep2) return;
 
     let midX, midY, midZ, distance;
@@ -128,13 +156,16 @@ export const SideInspector = () => {
         distance = 1000;
     }
 
-    // Prevent zero distance causing issues
     if (distance < 500) distance = 1000;
-
     window.dispatchEvent(new CustomEvent('canvas-focus-point', { detail: { x: midX, y: midY, z: midZ, dist: distance } }));
   };
 
-  if (!selectedElementId || !formData || formData.type === 'SUPPORT') return null;
+  const handleClose = () => {
+      setSelected(null);
+      clearMultiSelect();
+  };
+
+  if (!showSideInspector || !formData) return null;
 
   return (
     <div className="w-72 bg-slate-900 border border-slate-700 shadow-2xl rounded-lg overflow-hidden flex flex-col max-h-[calc(100vh-10rem)] shrink-0">
@@ -144,10 +175,16 @@ export const SideInspector = () => {
           <button onClick={() => setIsCollapsed(!isCollapsed)} className="text-red-500 hover:text-red-400 text-xs">
             {isCollapsed ? '▶' : '▼'}
           </button>
-          <span className="text-xs font-bold text-slate-100 bg-blue-600 px-2 py-0.5 rounded uppercase">{formData.type}</span>
-          <span className="text-slate-400 text-xs">Row {formData._rowIndex}</span>
+          {isMulti ? (
+              <span className="text-xs font-bold text-slate-100 bg-purple-600 px-2 py-0.5 rounded uppercase">MULTI-EDIT</span>
+          ) : (
+              <span className="text-xs font-bold text-slate-100 bg-blue-600 px-2 py-0.5 rounded uppercase">{formData.type}</span>
+          )}
+          <span className="text-slate-400 text-xs">
+              {isMulti ? `${formData._rowIndices.length} Items` : `Row ${formData._rowIndex}`}
+          </span>
         </div>
-        <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-white" title="Deselect">
+        <button onClick={handleClose} className="text-slate-400 hover:text-white" title="Deselect">
           ✕
         </button>
       </div>
@@ -156,7 +193,6 @@ export const SideInspector = () => {
         <>
       {/* Body */}
       <div className="p-4 flex-1 overflow-y-auto space-y-4">
-
         {/* Actions */}
         <div className="flex justify-between gap-2">
             <button
@@ -169,26 +205,28 @@ export const SideInspector = () => {
 
         {/* Attributes */}
         <div className="space-y-2">
-          <h3 className="text-slate-300 text-sm font-semibold border-b border-slate-700 pb-1">Attributes</h3>
+          <h3 className="text-slate-300 text-sm font-semibold border-b border-slate-700 pb-1">
+              {isMulti ? 'Common Attributes' : 'Attributes'}
+          </h3>
           <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col gap-1">
               <label className="text-xs text-slate-400">Bore</label>
-              <input type="number" value={formData.bore} onChange={(e) => handleChange('bore', null, e.target.value)} className="bg-slate-950 text-slate-200 text-xs p-1 rounded border border-slate-700" />
+              <input type="number" value={formData.bore} onChange={(e) => handleChange('bore', null, e.target.value)} placeholder={isMulti ? 'Multiple values...' : ''} className="bg-slate-950 text-slate-200 text-xs p-1 rounded border border-slate-700" />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs text-slate-400">Pipeline Ref</label>
-              <input type="text" value={formData.pipelineRef} onChange={(e) => handleChange('pipelineRef', null, e.target.value)} className="bg-slate-950 text-slate-200 text-xs p-1 rounded border border-slate-700" />
+              <input type="text" value={formData.pipelineRef} onChange={(e) => handleChange('pipelineRef', null, e.target.value)} placeholder={isMulti ? 'Multiple values...' : ''} className="bg-slate-950 text-slate-200 text-xs p-1 rounded border border-slate-700" />
             </div>
             {['skey', 'PIPING_CLASS', 'RATING', 'LINENO_KEY'].map(attr => (
               <div key={attr} className="flex flex-col gap-1">
                 <label className="text-xs text-slate-400 truncate" title={attr}>{attr}</label>
-                <input type="text" value={formData[attr]} onChange={(e) => handleChange(attr, null, e.target.value)} className="bg-slate-950 text-slate-200 text-xs p-1 rounded border border-slate-700" />
+                <input type="text" value={formData[attr]} onChange={(e) => handleChange(attr, null, e.target.value)} placeholder={isMulti ? 'Multiple values...' : ''} className="bg-slate-950 text-slate-200 text-xs p-1 rounded border border-slate-700" />
               </div>
             ))}
             {['CA97', 'CA98', 'CA1', 'CA2', 'CA3', 'CA4', 'CA5', 'CA6', 'CA7', 'CA8', 'CA9', 'CA10'].map(attr => (
               <div key={attr} className="flex flex-col gap-1">
                 <label className="text-xs text-slate-400">{attr}</label>
-                <input type="text" value={formData[attr]} onChange={(e) => handleChange(attr, null, e.target.value)} className="bg-slate-950 text-slate-200 text-xs p-1 rounded border border-slate-700" />
+                <input type="text" value={formData[attr]} onChange={(e) => handleChange(attr, null, e.target.value)} placeholder={isMulti ? 'Multiple values...' : ''} className="bg-slate-950 text-slate-200 text-xs p-1 rounded border border-slate-700" />
               </div>
             ))}
           </div>
