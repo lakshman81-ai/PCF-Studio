@@ -75,7 +75,8 @@ export class MasterDataController {
       grid.appendChild(renderTable('Table 1 — 9.A.1 Equal Tee (ASME B16.9)', t.table1EqualTee || []));
       grid.appendChild(renderTable('Table 2 — 9.A.2 Reducing Tee (ASME B16.9)', t.table2ReducingTee || []));
       grid.appendChild(renderTable('Table 3 — 9.A.3 Weldolet (MSS SP-97)', t.table3Weldolet || []));
-      grid.appendChild(renderTable(`Table 4 — Weight Master (in-app) rows: ${masterTableService.getTable4Rows().length}`, masterTableService.getTable4Rows().slice(0, 200)));
+      const t4Rows = masterTableService.getTable4Rows();
+      grid.appendChild(renderTable(`Table 4 — Weight Master (in-app) rows: ${t4Rows.length} (preview: first 25)`, t4Rows.slice(0, 25)));
       const s = document.getElementById('nmt-status');
       if (s) s.textContent = 'Read-only tables loaded.';
     };
@@ -267,7 +268,7 @@ export class MasterDataController {
 
         <div id="new-master-table" class="tab-pane" style="display:none">
           <h4>ASME Tables and Wt Tables</h4>
-          <p class="text-muted text-xs">Table 1-3 are editable. Table 4 is in-app and displayed from loaded weight master rows.</p>
+          <p class="text-muted text-xs">All tables are read-only previews. Table 4 is in-app and shown as a sampled preview like other master tables.</p>
           <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem"><button id="nmt-load" class="btn btn-secondary btn-sm">Reload Tables</button><span id="nmt-status" class="text-xs text-muted"></span></div>
           <div id="nmt-grid-wrap" style="display:grid;grid-template-columns:1fr;gap:0.8rem"></div>
         </div>

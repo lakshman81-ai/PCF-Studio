@@ -306,3 +306,8 @@
 
 [Task 5] [Task Description]= "don't make these table editable" "Appearance similar to other masters"
 [Implementation Pending/Improvements Identified for future]: Add pagination and sticky section filters for Table 4 large dataset rendering.
+
+[2026-04-02 00:00 UTC] [Task 6] [Table4 row preview fix + PCF Fixer layout/draw stability + support mapping editability + landing row restructure] [Added static Table4 in-app fallback load path so row count is not zero when Weight Master is not session-loaded, reduced Table4 preview to first 25 rows like other masters, expanded PCF Fixer main width utilization, renamed Stage 3 label to pending, hardened Draw Canvas Pull-from-3D with strict EP1/EP2 numeric filtering to prevent null.x crashes, replaced ambiguous center arrow with explicit Open Properties button, enabled SUPPORT MAPPING block add (+) and editable Block/Friction/Gap/Name/Description wiring, and moved PCF Studio+theme row below tab row.] [js/services/master-table-service.js; js/ui/master-data-controller.js; js/pcf-fixer/App.jsx; js/pcf-fixer/ui/tabs/DrawCanvasTab.jsx; js/ray-concept/rc-config.js; js/ray-concept/rc-tab.js; index.html; js/ui/status-bar.js] [npm run build] [current-branch] [N/A]
+
+[Task 6] [Task Description]= "address inline comments" "table4 rows/preview + fixer width + stage label + draw canvas error + stale button + support mapping editability + landing row"
+[Implementation Pending/Improvements Identified for future]: Add virtualized grid for full Table4 browsing and add validation hints for custom support mapping gap/friction syntax.

@@ -1,4 +1,5 @@
 import { dataManager } from './data-manager.js';
+import staticWeightRows from '../../Docs/Masters/wtValveweights.json';
 
 const STORAGE_KEY = 'pcf_master_new_tables_v2';
 
@@ -66,7 +67,11 @@ class MasterTableService {
   getTables() { return this.tables; }
   updateTable(name, rows) { if (Array.isArray(rows)) { this.tables[name] = rows; this._save(); } }
 
-  getTable4Rows() { return dataManager.getWeights() || []; }
+  getTable4Rows() {
+    const liveRows = dataManager.getWeights();
+    if (Array.isArray(liveRows) && liveRows.length > 0) return liveRows;
+    return Array.isArray(staticWeightRows) ? staticWeightRows : [];
+  }
 
   getTeeBrlen(headerBore, branchBore) {
     const h = this._n(headerBore), b = this._n(branchBore);

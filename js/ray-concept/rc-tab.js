@@ -55,6 +55,7 @@ function buildPanelHTML() {
     send:     ico('<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>'),
     settings: ico('<circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M2 12h2m16 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>'),
     play:     ico('<polygon points="5 3 19 12 5 21 5 3"/>'),
+    plus:     ico('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'),
   };
 
   // ── Button style helpers ─────────────────────────────────────────────────
@@ -170,6 +171,9 @@ function buildPanelHTML() {
         </tr></thead>
         <tbody id="rc-cfg-sm-blocks"></tbody>
       </table>
+      <div style="margin-top:0.35rem">
+        <button id="rc-btn-sm-add-block" style="${ghost};padding:2px 8px">${ICO.plus} Add Block</button>
+      </div>
     </div>
     <div style="margin-top:0.4rem;display:flex;gap:0.5rem">
       <button id="rc-btn-config-apply" style="${pillPrimary}">✓ Apply</button>
@@ -706,19 +710,46 @@ function buildConfigGrid(root) {
   const smFallbackEl = root.querySelector('#rc-cfg-fallback-name');
   if (smFallbackEl) smFallbackEl.value = cfg.supportMapping.fallbackName ?? 'RST';
   const smTbody = root.querySelector('#rc-cfg-sm-blocks');
+  const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   if (smTbody) {
     smTbody.innerHTML = cfg.supportMapping.blocks.map(b => `
       <tr>
-        <td style="padding:2px 6px;border:1px solid var(--steel);color:var(--text-primary)">Block ${b.id}</td>
-        <td style="padding:2px 6px;border:1px solid var(--steel);color:var(--text-primary)">${b.frictionMatch.map(v => v === '' ? '(empty)' : v).join(' / ')}</td>
-        <td style="padding:2px 6px;border:1px solid var(--steel);color:var(--text-primary)">${b.gapCondition === 'empty' ? '(empty)' : b.gapCondition === 'any' ? 'Any' : b.gapCondition}</td>
-        <td style="padding:2px 6px;border:1px solid var(--steel);color:var(--amber);font-weight:600">
-          <input data-cfg-block="${b.id}" type="text" value="${b.name}"
-            style="width:60px;font-size:0.68rem;background:var(--bg-0);color:var(--amber);border:1px solid var(--steel);border-radius:3px;padding:1px 4px">
+        <td style="padding:2px 6px;border:1px solid var(--steel);color:var(--text-primary)">
+          <input data-cfg-block="${b.id}" data-cfg-block-field="label" type="text" value="${esc(b.label || `Block ${b.id}`)}"
+            style="width:100%;font-size:0.68rem;background:var(--bg-0);color:var(--text-primary);border:1px solid var(--steel);border-radius:3px;padding:1px 4px">
         </td>
-        <td style="padding:2px 6px;border:1px solid var(--steel);color:var(--text-muted)">${b.desc}</td>
+        <td style="padding:2px 6px;border:1px solid var(--steel);color:var(--text-primary)">
+          <input data-cfg-block="${b.id}" data-cfg-block-field="frictionMatch" type="text" value="${esc((b.frictionMatch || []).join(' / '))}"
+            style="width:100%;font-size:0.68rem;background:var(--bg-0);color:var(--text-primary);border:1px solid var(--steel);border-radius:3px;padding:1px 4px">
+        </td>
+        <td style="padding:2px 6px;border:1px solid var(--steel);color:var(--text-primary)">
+          <input data-cfg-block="${b.id}" data-cfg-block-field="gapCondition" type="text" value="${esc(b.gapCondition || 'any')}"
+            style="width:100%;font-size:0.68rem;background:var(--bg-0);color:var(--text-primary);border:1px solid var(--steel);border-radius:3px;padding:1px 4px">
+        </td>
+        <td style="padding:2px 6px;border:1px solid var(--steel);color:var(--amber);font-weight:600">
+          <input data-cfg-block="${b.id}" data-cfg-block-field="name" type="text" value="${esc(b.name)}"
+            style="width:100%;font-size:0.68rem;background:var(--bg-0);color:var(--amber);border:1px solid var(--steel);border-radius:3px;padding:1px 4px">
+        </td>
+        <td style="padding:2px 6px;border:1px solid var(--steel);color:var(--text-primary)">
+          <input data-cfg-block="${b.id}" data-cfg-block-field="desc" type="text" value="${esc(b.desc || '')}"
+            style="width:100%;font-size:0.68rem;background:var(--bg-0);color:var(--text-muted);border:1px solid var(--steel);border-radius:3px;padding:1px 4px">
+        </td>
       </tr>`).join('');
   }
+
+  root.querySelector('#rc-btn-sm-add-block')?.addEventListener('click', () => {
+    const cfgLive = getRayConfig();
+    const maxId = Math.max(0, ...(cfgLive.supportMapping?.blocks || []).map(b => Number.parseInt(b.id, 10) || 0));
+    cfgLive.supportMapping.blocks.push({
+      id: maxId + 1,
+      label: `Block ${maxId + 1}`,
+      frictionMatch: [''],
+      gapCondition: 'any',
+      name: cfgLive.supportMapping.fallbackName || 'CA150',
+      desc: 'Custom block'
+    });
+    buildConfigGrid(root);
+  });
 }
 
 function toggleConfig(root) {
@@ -748,8 +779,20 @@ function applyConfig(root) {
   if (smFallbackEl) cfg.supportMapping.fallbackName = smFallbackEl.value || 'RST';
   root.querySelectorAll('[data-cfg-block]').forEach(el => {
     const id = parseInt(el.dataset.cfgBlock, 10);
+    const field = el.dataset.cfgBlockField;
     const block = cfg.supportMapping.blocks.find(b => b.id === id);
-    if (block) block.name = el.value.trim() || block.name;
+    if (!block || !field) return;
+    const raw = String(el.value ?? '').trim();
+    if (field === 'frictionMatch') {
+      const tokens = raw.split('/').map(v => v.trim());
+      block.frictionMatch = tokens.length ? tokens : [''];
+      return;
+    }
+    if (field === 'gapCondition') {
+      block.gapCondition = raw || 'any';
+      return;
+    }
+    block[field] = raw || block[field];
   });
 
   passLog(root, `✓ Config applied`, 'info');
