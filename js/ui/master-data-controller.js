@@ -52,25 +52,54 @@ export class MasterDataController {
 
 
   bindNewMasterTableEvents() {
+    const renderTable = (title, key, rows, editable = true) => {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'border:1px solid var(--steel);border-radius:4px;padding:0.5rem;background:var(--bg-panel)';
+      const cols = Object.keys(rows[0] || {});
+      wrap.innerHTML = `
+        <div style="font-weight:600;color:var(--amber);margin-bottom:0.35rem">${title}</div>
+        <div style="max-height:220px;overflow:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:0.72rem">
+            <thead><tr>${cols.map(c => `<th style="position:sticky;top:0;background:var(--bg-2);border:1px solid var(--steel);padding:3px 5px;text-align:left">${c}</th>`).join('')}</tr></thead>
+            <tbody>${rows.map((r,ri)=>`<tr data-ri="${ri}">${cols.map(c=>`<td style="border:1px solid var(--steel);padding:2px 4px"><input data-col="${c}" value="${r[c] ?? ''}" ${editable ? '' : 'readonly'} style="width:100%;background:${editable ? 'var(--bg-0)' : 'transparent'};color:var(--text-primary);border:${editable ? '1px solid var(--steel)' : 'none'};font-size:0.72rem"></td>`).join('')}</tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+      wrap.dataset.tableKey = key;
+      return wrap;
+    };
+
     const load = () => {
       const t = masterTableService.getTables();
-      const t1 = document.getElementById('nmt-table1');
-      const t2 = document.getElementById('nmt-table2');
-      const t3 = document.getElementById('nmt-table3');
-      const t4 = document.getElementById('nmt-table4-url');
-      if (t1) t1.value = JSON.stringify(t.table1EqualTee || [], null, 2);
-      if (t2) t2.value = JSON.stringify(t.table2ReducingTee || [], null, 2);
-      if (t3) t3.value = JSON.stringify(t.table3Weldolet || [], null, 2);
-      if (t4) t4.textContent = t.table4Meta?.sourceUrl || '';
+      const grid = document.getElementById('nmt-grid-wrap');
+      if (!grid) return;
+      grid.innerHTML = '';
+      grid.appendChild(renderTable('Table 1 — 9.A.1 Equal Tee (ASME B16.9)', 'table1EqualTee', t.table1EqualTee || []));
+      grid.appendChild(renderTable('Table 2 — 9.A.2 Reducing Tee (ASME B16.9)', 'table2ReducingTee', t.table2ReducingTee || []));
+      grid.appendChild(renderTable('Table 3 — 9.A.3 Weldolet (MSS SP-97)', 'table3Weldolet', t.table3Weldolet || []));
+      grid.appendChild(renderTable(`Table 4 — Weight Master (in-app) rows: ${masterTableService.getTable4Rows().length}`, 'table4Weight', masterTableService.getTable4Rows().slice(0, 200), false));
     };
+
     requestAnimationFrame(load);
     document.addEventListener('click', (e) => {
       if (e.target?.id === 'nmt-load') load();
       if (e.target?.id === 'nmt-save') {
         try {
-          masterTableService.updateTable('table1EqualTee', JSON.parse(document.getElementById('nmt-table1').value || '[]'));
-          masterTableService.updateTable('table2ReducingTee', JSON.parse(document.getElementById('nmt-table2').value || '[]'));
-          masterTableService.updateTable('table3Weldolet', JSON.parse(document.getElementById('nmt-table3').value || '[]'));
+          const grid = document.getElementById('nmt-grid-wrap');
+          const pull = (tableKey) => {
+            const pane = grid.querySelector(`[data-table-key="${tableKey}"]`);
+            if (!pane) return [];
+            const rows = [];
+            pane.querySelectorAll('tbody tr').forEach(tr => {
+              const row = {};
+              tr.querySelectorAll('input[data-col]').forEach(inp => { row[inp.dataset.col] = inp.value; });
+              rows.push(row);
+            });
+            return rows;
+          };
+          masterTableService.updateTable('table1EqualTee', pull('table1EqualTee'));
+          masterTableService.updateTable('table2ReducingTee', pull('table2ReducingTee'));
+          masterTableService.updateTable('table3Weldolet', pull('table3Weldolet'));
           const s = document.getElementById('nmt-status'); if (s) s.textContent = 'Saved';
         } catch (err) {
           const s = document.getElementById('nmt-status'); if (s) s.textContent = `Error: ${err.message}`;
@@ -253,21 +282,16 @@ export class MasterDataController {
         <button class="tab-btn" data-tab="pipingclass">Piping Class Master</button>
         <button class="tab-btn" data-tab="matmap">PCF Material Map</button>
         <button class="tab-btn" data-tab="dump">Line Dump from E3D</button>
-        <button class="tab-btn" data-tab="new-master-table">New Master Table</button>
+        <button class="tab-btn" data-tab="new-master-table">ASME Tables and Wt Tables</button>
       </div>
       
       <div class="integ-content">
 
         <div id="new-master-table" class="tab-pane" style="display:none">
-          <h4>MasterData+Weight+Bore Program Tables</h4>
-          <p class="text-muted text-xs">Editable JSON rows for Tables 1–3. Table 4 source is registered in service.</p>
-          <div style="display:grid;grid-template-columns:1fr;gap:0.6rem">
-            <label>Table 1: 9.A.1 Equal Tee<textarea id="nmt-table1" style="width:100%;min-height:90px;font-family:var(--font-code)"></textarea></label>
-            <label>Table 2: 9.A.2 Reducing Tee<textarea id="nmt-table2" style="width:100%;min-height:90px;font-family:var(--font-code)"></textarea></label>
-            <label>Table 3: 9.A.3 Weldolet<textarea id="nmt-table3" style="width:100%;min-height:90px;font-family:var(--font-code)"></textarea></label>
-            <div>Table 4 source URL: <code id="nmt-table4-url"></code></div>
-            <div style="display:flex;gap:0.5rem"><button id="nmt-load" class="btn btn-secondary btn-sm">Load</button><button id="nmt-save" class="btn btn-primary btn-sm">Save</button><span id="nmt-status" class="text-xs text-muted"></span></div>
-          </div>
+          <h4>ASME Tables and Wt Tables</h4>
+          <p class="text-muted text-xs">Table 1-3 are editable. Table 4 is in-app and displayed from loaded weight master rows.</p>
+          <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem"><button id="nmt-load" class="btn btn-secondary btn-sm">Reload Tables</button><button id="nmt-save" class="btn btn-primary btn-sm">Save Table 1-3</button><span id="nmt-status" class="text-xs text-muted"></span></div>
+          <div id="nmt-grid-wrap" style="display:grid;grid-template-columns:1fr;gap:0.8rem"></div>
         </div>
 
         <!-- ═══ Linelist Manager Sub-Tab ═══ -->

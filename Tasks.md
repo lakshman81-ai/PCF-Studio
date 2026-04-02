@@ -296,3 +296,8 @@
 
 [Task 3] [Task Description]= "In PCF fixer check syntax fixer logic" "Tee/BP CP,BP, Weight fallback"
 [Implementation Pending/Improvements Identified for future]: Validate branch-axis inference against real benchmark files and tune offset heuristics for atypical topologies.
+
+[2026-04-02 00:00 UTC] [Task 4] [ASME/Wt tables full coverage UI + PCF Fixer header/canvas adjustments] [Rebuilt New Master table pane as grid tables for Table1-4, migrated Table4 to in-app JSON source, expanded Table1-3 datasets to full provided coverage, removed PCF Fixer header strip from app shell, and maximized 3D topology/draw canvas viewport container.] [js/services/master-table-service.js; js/ui/master-data-controller.js; js/pcf-fixer/App.jsx; Docs/Masters/wtValveweights.json; js/ui/status-bar.js] [npm run build] [current-branch] [N/A]
+
+[Task 4] [Task Description]= "Show all 4 master table data in table form" "plus PCF Fixer header/canvas updates"
+[Implementation Pending/Improvements Identified for future]: Render full 1595 Table4 rows with virtualized grid for performance and add in-grid filtering/sorting.

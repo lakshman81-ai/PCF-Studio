@@ -1,115 +1,111 @@
 import { dataManager } from './data-manager.js';
 
-const STORAGE_KEY = 'pcf_master_new_tables_v1';
-const TABLE4_URL = 'https://github.com/lakshman81-ai/PCF-Studio/blob/14dd06e463a91a0c240b2b8afe36daee1d13013d/Docs/Masters/wtValveweights.xlsx';
+const STORAGE_KEY = 'pcf_master_new_tables_v2';
+
+const NPS_TO_MM = {
+  '1/2': 15, '3/4': 20, '1': 25, '1-1/4': 32, '1-1/2': 40, '2': 50, '2-1/2': 65,
+  '3': 80, '3-1/2': 90, '4': 100, '5': 125, '6': 150, '8': 200, '10': 250, '12': 300,
+  '14': 350, '16': 400, '18': 450, '20': 500, '24': 600, '30': 750, '36': 900, '42': 1050,
+  '48': 1200
+};
+
+const TABLE1 = [
+  ['1/2',15,21.3,25,25],['3/4',20,26.7,29,29],['1',25,33.4,38,38],['1-1/4',32,42.2,48,48],
+  ['1-1/2',40,48.3,57,57],['2',50,60.3,64,64],['2-1/2',65,73.0,76,76],['3',80,88.9,86,86],
+  ['3-1/2',90,101.6,95,95],['4',100,114.3,105,105],['5',125,141.3,124,124],['6',150,168.3,143,143],
+  ['8',200,219.1,178,178],['10',250,273.1,216,216],['12',300,323.9,254,254],['14',350,355.6,279,279],
+  ['16',400,406.4,305,305],['18',450,457.2,343,343],['20',500,508.0,381,381],['24',600,610.0,432,432],
+  ['30',750,762.0,559,559],['36',900,914.0,660,660],['42',1050,1067.0,762,762],['48',1200,1219.0,864,864]
+].map(([nps_inch,bore_mm,od_mm,c_mm,m_mm]) => ({ nps_inch,bore_mm,od_mm,c_mm,m_mm }));
+
+const TABLE2 = [
+ ['4','3',102],['4','2',95],['6','4',130],['6','3',124],['8','6',168],['8','4',156],['10','8',206],['10','6',194],
+ ['12','10',244],['12','8',232],['12','6',219],['14','10',264],['14','8',254],['16','12',295],['16','10',283],
+ ['18','14',330],['18','12',321],['20','16',368],['20','14',356],['24','20',419],['24','16',406]
+].map(([header_nps,branch_nps,m_mm]) => ({
+  header_nps, branch_nps, m_mm,
+  header_bore_mm: NPS_TO_MM[header_nps] ?? Number(header_nps),
+  branch_bore_mm: NPS_TO_MM[branch_nps] ?? Number(branch_nps)
+}));
+
+const TABLE3 = [
+ ['2','3/4',38.1,60.3],['2','1',38.1,60.3],['3','1',44.4,88.9],['3','1-1/2',44.4,88.9],['3','2',50.8,88.9],
+ ['4','1',50.8,114.3],['4','1-1/2',50.8,114.3],['4','2',57.2,114.3],['4','3',63.5,114.3],['6','1',57.2,168.3],
+ ['6','2',63.5,168.3],['6','3',76.2,168.3],['6','4',82.6,168.3],['8','2',69.8,219.1],['8','3',82.6,219.1],
+ ['8','4',88.9,219.1],['8','6',101.6,219.1],['10','2',76.2,273.1],['10','3',88.9,273.1],['10','4',95.2,273.1],
+ ['10','6',108.0,273.1],['10','8',127.0,273.1],['12','2',82.6,323.9],['12','3',95.2,323.9],['12','4',101.6,323.9],
+ ['12','6',114.3,323.9],['12','8',133.4,323.9],['12','10',152.4,323.9],['14','3',101.6,355.6],['14','4',108.0,355.6],
+ ['14','6',120.6,355.6],['14','8',139.7,355.6],['14','10',158.8,355.6],['16','3',108.0,406.4],['16','4',114.3,406.4],
+ ['16','6',127.0,406.4],['16','8',146.0,406.4],['16','10',165.1,406.4],['16','12',184.2,406.4]
+].map(([header_nps,branch_nps,A_mm,header_od_mm]) => ({
+  header_nps, branch_nps, A_mm, header_od_mm,
+  header_bore_mm: NPS_TO_MM[header_nps] ?? Number(header_nps),
+  branch_bore_mm: NPS_TO_MM[branch_nps] ?? Number(branch_nps),
+  brlen_mm: Number((A_mm + 0.5*header_od_mm).toFixed(1))
+}));
 
 const defaults = {
-  table1EqualTee: [
-    { bore_mm: 15, brlen_mm: 25 }, { bore_mm: 20, brlen_mm: 29 }, { bore_mm: 25, brlen_mm: 38 },
-    { bore_mm: 32, brlen_mm: 48 }, { bore_mm: 40, brlen_mm: 57 }, { bore_mm: 50, brlen_mm: 64 },
-    { bore_mm: 65, brlen_mm: 76 }, { bore_mm: 80, brlen_mm: 86 }, { bore_mm: 100, brlen_mm: 105 },
-    { bore_mm: 125, brlen_mm: 124 }, { bore_mm: 150, brlen_mm: 143 }, { bore_mm: 200, brlen_mm: 178 },
-    { bore_mm: 250, brlen_mm: 216 }, { bore_mm: 300, brlen_mm: 254 }, { bore_mm: 350, brlen_mm: 279 },
-    { bore_mm: 400, brlen_mm: 305 }, { bore_mm: 450, brlen_mm: 343 }, { bore_mm: 500, brlen_mm: 381 },
-    { bore_mm: 600, brlen_mm: 432 }
-  ],
-  table2ReducingTee: [
-    { header_bore_mm: 100, branch_bore_mm: 80, brlen_mm: 102 }, { header_bore_mm: 100, branch_bore_mm: 50, brlen_mm: 95 },
-    { header_bore_mm: 150, branch_bore_mm: 100, brlen_mm: 130 }, { header_bore_mm: 150, branch_bore_mm: 80, brlen_mm: 124 },
-    { header_bore_mm: 200, branch_bore_mm: 150, brlen_mm: 168 }, { header_bore_mm: 200, branch_bore_mm: 100, brlen_mm: 156 }
-  ],
-  table3Weldolet: [
-    { header_bore_mm: 50, branch_bore_mm: 20, A_mm: 38.1, header_od_mm: 60.3 },
-    { header_bore_mm: 80, branch_bore_mm: 40, A_mm: 44.4, header_od_mm: 88.9 },
-    { header_bore_mm: 100, branch_bore_mm: 50, A_mm: 57.2, header_od_mm: 114.3 },
-    { header_bore_mm: 150, branch_bore_mm: 80, A_mm: 76.2, header_od_mm: 168.3 },
-    { header_bore_mm: 200, branch_bore_mm: 100, A_mm: 88.9, header_od_mm: 219.1 },
-    { header_bore_mm: 300, branch_bore_mm: 150, A_mm: 114.3, header_od_mm: 323.9 }
-  ],
-  table4Meta: { sourceUrl: TABLE4_URL }
+  table1EqualTee: TABLE1,
+  table2ReducingTee: TABLE2,
+  table3Weldolet: TABLE3,
+  table4Meta: { source: 'in-app', file: '/Docs/Masters/wtValveweights.json' }
 };
 
 class MasterTableService {
-  constructor() {
-    this.tables = this._load();
-  }
-
+  constructor() { this.tables = this._load(); }
   _n(v) { const n = Number.parseFloat(String(v ?? '').trim()); return Number.isFinite(n) ? n : null; }
   _s(v) { return String(v ?? '').replace(/\s+/g, ' ').trim(); }
-
   _load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return structuredClone(defaults);
       return { ...structuredClone(defaults), ...JSON.parse(raw) };
-    } catch {
-      return structuredClone(defaults);
-    }
+    } catch { return structuredClone(defaults); }
   }
-
   _save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(this.tables)); }
-
   getTables() { return this.tables; }
+  updateTable(name, rows) { if (Array.isArray(rows)) { this.tables[name] = rows; this._save(); } }
 
-  updateTable(name, rows) {
-    if (!Array.isArray(rows)) return;
-    this.tables[name] = rows;
-    this._save();
-  }
+  getTable4Rows() { return dataManager.getWeights() || []; }
 
   getTeeBrlen(headerBore, branchBore) {
-    const h = this._n(headerBore);
-    const b = this._n(branchBore);
+    const h = this._n(headerBore), b = this._n(branchBore);
     if (h == null || b == null) return null;
     if (Math.abs(h - b) < 1e-6) {
       const row = this.tables.table1EqualTee.find(r => this._n(r.bore_mm) === h);
-      return this._n(row?.brlen_mm);
+      return this._n(row?.m_mm);
     }
     const row = this.tables.table2ReducingTee.find(r => this._n(r.header_bore_mm) === h && this._n(r.branch_bore_mm) === b);
-    return this._n(row?.brlen_mm);
+    return this._n(row?.m_mm);
   }
 
   getOletBrlen(headerBore, branchBore) {
-    const h = this._n(headerBore);
-    const b = this._n(branchBore);
+    const h = this._n(headerBore), b = this._n(branchBore);
     const row = this.tables.table3Weldolet.find(r => this._n(r.header_bore_mm) === h && this._n(r.branch_bore_mm) === b);
     if (!row) return null;
-    const A = this._n(row.A_mm);
-    const od = this._n(row.header_od_mm);
+    const A = this._n(row.A_mm), od = this._n(row.header_od_mm);
     return A == null || od == null ? null : A + (0.5 * od);
   }
 
   _normalizedWeightRows() {
-    const rows = dataManager.getWeights() || [];
+    const rows = this.getTable4Rows();
     return rows.map((row) => {
       const bore = this._n(row.DN ?? row['Size (NPS)'] ?? row.Size ?? row.NS);
       const rating = this._n(String(row.Rating ?? '').replace(/[^\d.]/g, ''));
       const flangeWeight = this._n(row['RF/RTJ KG'] ?? row['Flange Weight'] ?? row.Weight);
-      const valveType = this._s(row['Type Description'] ?? row['Valve Type'] ?? row.Type ?? '');
+      const valveType = this._s(row.TypeDesc ?? row['Type Description'] ?? row['Valve Type'] ?? row.Type ?? '');
       const valveWeight = this._n(row['Valve Weight'] ?? row['RF/RTJ KG'] ?? row.Weight);
-      const qualityOk = bore != null && (flangeWeight != null || valveWeight != null);
-      return {
-        bore_mm: bore,
-        rating_class: rating,
-        flange_weight: flangeWeight,
-        valve_type: valveType,
-        valve_weight: valveWeight,
-        quality_ok: qualityOk
-      };
+      return { bore_mm: bore, rating_class: rating, flange_weight: flangeWeight, valve_type: valveType, valve_weight: valveWeight, quality_ok: bore != null && (flangeWeight != null || valveWeight != null) };
     });
   }
 
   getWeightByBoreAndClass(boreMm, ratingClass) {
-    const b = this._n(boreMm);
-    const rc = this._n(ratingClass);
+    const b = this._n(boreMm), rc = this._n(ratingClass);
     const exact = this._normalizedWeightRows().find(r => r.quality_ok && r.bore_mm === b && r.rating_class === rc);
     return exact?.flange_weight ?? null;
   }
-
   getValveWeightByType(valveType, boreMm = null, ratingClass = null) {
-    const t = this._s(valveType).toLowerCase();
-    const b = this._n(boreMm);
-    const rc = this._n(ratingClass);
+    const t = this._s(valveType).toLowerCase(), b = this._n(boreMm), rc = this._n(ratingClass);
     const rows = this._normalizedWeightRows().filter(r => r.quality_ok);
     const exact = rows.find(r => r.valve_type.toLowerCase() === t && (b == null || r.bore_mm === b) && (rc == null || r.rating_class === rc));
     if (exact) return exact.valve_weight ?? exact.flange_weight ?? null;
@@ -118,19 +114,9 @@ class MasterTableService {
   }
 
   resolveComponentWeight({ type, directWeight, boreMm, ratingClass, valveType }) {
-    const trace = [];
-    const t = this._s(type).toUpperCase();
-    if (!['FLANGE', 'VALVE', 'TEE', 'OLET', 'REDUCER-CONCENTRIC', 'REDUCER-ECCENTRIC'].includes(t)) {
-      trace.push('blocked:unsupported-type');
-      return { weight: null, trace };
-    }
-
-    const direct = this._n(directWeight);
-    if (direct != null && direct > 0) {
-      trace.push('direct-input-weight');
-      return { weight: direct, trace };
-    }
-
+    const trace = []; const t = this._s(type).toUpperCase();
+    if (!['FLANGE', 'VALVE', 'TEE', 'OLET', 'REDUCER-CONCENTRIC', 'REDUCER-ECCENTRIC'].includes(t)) return { weight: null, trace: ['blocked:unsupported-type'] };
+    const direct = this._n(directWeight); if (direct != null && direct > 0) return { weight: direct, trace: ['direct-input-weight'] };
     const exactWeight = this.getWeightByBoreAndClass(boreMm, ratingClass);
     if (exactWeight != null) {
       trace.push('table4-exact-bore-class');
@@ -140,24 +126,12 @@ class MasterTableService {
       }
       return { weight: exactWeight, trace };
     }
-
-    const c300 = this.getWeightByBoreAndClass(boreMm, 300);
-    if (c300 != null) {
-      trace.push('fallback-class-300');
-      return { weight: c300, trace };
-    }
-
+    const c300 = this.getWeightByBoreAndClass(boreMm, 300); if (c300 != null) return { weight: c300, trace: ['fallback-class-300'] };
     if (t === 'VALVE') {
-      const vb = this.getValveWeightByType(valveType || 'Ball valve (reduced bore)', boreMm, ratingClass)
-        ?? this.getValveWeightByType('Ball valve (reduced bore)', boreMm, 300);
-      if (vb != null) {
-        trace.push('fallback-valve-ball-reduced-bore');
-        return { weight: vb, trace };
-      }
+      const vb = this.getValveWeightByType(valveType || 'Ball valve (reduced bore)', boreMm, ratingClass) ?? this.getValveWeightByType('Ball valve (reduced bore)', boreMm, 300);
+      if (vb != null) return { weight: vb, trace: ['fallback-valve-ball-reduced-bore'] };
     }
-
-    trace.push('unresolved-null-safe');
-    return { weight: null, trace };
+    return { weight: null, trace: ['unresolved-null-safe'] };
   }
 }
 
