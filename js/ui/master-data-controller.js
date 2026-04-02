@@ -6,6 +6,7 @@ import { linelistService } from "../services/linelist-service.js";
 import { DiagnosticLogger } from "../utils/diagnostic-logger.js";
 import { getState, setState } from "../state.js";
 import { getConfig } from "../config/config-store.js";
+import { masterTableService } from "../services/master-table-service.js";
 
 /**
  * Main UI Controller for the Integration Module (Master Data Tab).
@@ -25,6 +26,7 @@ export class MasterDataController {
     this.weightLogFilter = "ALL";
     this.renderTabs();
     this.bindEvents();
+    this.bindNewMasterTableEvents();
 
     // Initial load of smart map UI if headers exist in storage
     const state = getState("linelist");
@@ -46,6 +48,42 @@ export class MasterDataController {
 
     this._injectLogFilters();
     this._injectSessionDialog();
+  }
+
+
+  bindNewMasterTableEvents() {
+    const renderTable = (title, rows) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'preview-table-wrap';
+      wrap.style.cssText = 'border:1px solid var(--steel);border-radius:4px;background:var(--bg-panel);padding:0.45rem';
+      const cols = Object.keys(rows[0] || {});
+      const thead = cols.map(c => `<th style="position:sticky;top:0;background:var(--bg-2);border:1px solid var(--steel);padding:4px 6px;text-align:left">${c}</th>`).join('');
+      const tbody = rows.map(r => `<tr>${cols.map(c => `<td style="border:1px solid var(--steel);padding:3px 6px">${r[c] ?? ''}</td>`).join('')}</tr>`).join('');
+      wrap.innerHTML = `
+        <div style="font-size:0.78rem;font-weight:600;color:var(--amber);margin-bottom:0.35rem">${title}</div>
+        <div style="max-height:260px;overflow:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:0.72rem"><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table>
+        </div>`;
+      return wrap;
+    };
+
+    const load = () => {
+      const t = masterTableService.getTables();
+      const grid = document.getElementById('nmt-grid-wrap');
+      if (!grid) return;
+      grid.innerHTML = '';
+      grid.appendChild(renderTable('Table 1 — 9.A.1 Equal Tee (ASME B16.9)', t.table1EqualTee || []));
+      grid.appendChild(renderTable('Table 2 — 9.A.2 Reducing Tee (ASME B16.9)', t.table2ReducingTee || []));
+      grid.appendChild(renderTable('Table 3 — 9.A.3 Weldolet (MSS SP-97)', t.table3Weldolet || []));
+      grid.appendChild(renderTable(`Table 4 — Weight Master (in-app) rows: ${masterTableService.getTable4Rows().length}`, masterTableService.getTable4Rows().slice(0, 200)));
+      const s = document.getElementById('nmt-status');
+      if (s) s.textContent = 'Read-only tables loaded.';
+    };
+
+    requestAnimationFrame(load);
+    document.addEventListener('click', (e) => {
+      if (e.target?.id === 'nmt-load') load();
+    });
   }
 
   renderInitialData() {
@@ -222,9 +260,18 @@ export class MasterDataController {
         <button class="tab-btn" data-tab="pipingclass">Piping Class Master</button>
         <button class="tab-btn" data-tab="matmap">PCF Material Map</button>
         <button class="tab-btn" data-tab="dump">Line Dump from E3D</button>
+        <button class="tab-btn" data-tab="new-master-table">ASME Tables and Wt Tables</button>
       </div>
       
       <div class="integ-content">
+
+        <div id="new-master-table" class="tab-pane" style="display:none">
+          <h4>ASME Tables and Wt Tables</h4>
+          <p class="text-muted text-xs">Table 1-3 are editable. Table 4 is in-app and displayed from loaded weight master rows.</p>
+          <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem"><button id="nmt-load" class="btn btn-secondary btn-sm">Reload Tables</button><span id="nmt-status" class="text-xs text-muted"></span></div>
+          <div id="nmt-grid-wrap" style="display:grid;grid-template-columns:1fr;gap:0.8rem"></div>
+        </div>
+
         <!-- ═══ Linelist Manager Sub-Tab ═══ -->
         <div id="linelist" class="tab-pane active">
           <div style="margin-bottom: 0.5rem; text-align: right; display:flex; gap:0.5rem; justify-content:flex-end;">

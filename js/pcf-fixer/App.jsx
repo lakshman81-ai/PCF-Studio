@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Header } from './ui/components/Header';
 import { StatusBar } from './ui/components/StatusBar';
 import { DataTableTab } from './ui/tabs/DataTableTab';
 import { CoreProcessorTab } from './ui/tabs/CoreProcessorTab';
@@ -50,9 +49,7 @@ function MainApp() {
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans flex flex-col pb-12">
-      <Header />
-
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
+      <main className={`flex-1 w-full ${activeTab === 'canvas' ? 'max-w-none px-1 py-2' : 'max-w-7xl mx-auto px-4 py-6'}`}>
 
         {/* Tab Navigation */}
         <div className="flex space-x-1 border-b border-slate-300 mb-6">
@@ -90,7 +87,7 @@ function MainApp() {
         </div>
 
         {/* Tab Content */}
-        <div className="bg-white rounded shadow-sm min-h-[500px] border border-slate-200">
+        <div className={`bg-white rounded shadow-sm border border-slate-200 ${activeTab === 'canvas' ? 'min-h-[calc(100vh-160px)]' : 'min-h-[500px]'}`}>
           {activeTab === 'data' && (
             <div className="flex flex-col">
               <div className="bg-slate-100 p-2 border-b border-slate-200 flex space-x-2">
@@ -104,7 +101,7 @@ function MainApp() {
             </div>
           )}
           {activeTab === 'core' && <div className="p-4"><CoreProcessorTab /></div>}
-          {activeTab === 'canvas' && <div className="p-2">{isDrawMode ? <DrawCanvasTab /> : <CanvasTab />}</div>}
+          {activeTab === 'canvas' && <div className="p-0 h-full">{isDrawMode ? <DrawCanvasTab /> : <CanvasTab />}</div>}
           {activeTab === 'config' && <ConfigTab />}
           {activeTab === 'output' && <OutputTab />}
         </div>
