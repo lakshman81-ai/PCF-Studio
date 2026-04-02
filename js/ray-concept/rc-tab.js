@@ -968,14 +968,18 @@ function _mapToDatatableRow(comp, rowIndex) {
 }
 
 async function runPushToDatatable(root) {
-  if (!rcState.finalComponents.length) {
-    passLog(root, `⚠ Run S3/S4 first`, 'warn');
-    _mastersLog('warn', '⚠ Push skipped: run S3/S4 first');
+  const sourceRows = rcState.finalComponents.length
+    ? rcState.finalComponents
+    : rcState.components;
+  if (!sourceRows.length) {
+    passLog(root, `⚠ No rows available. Run S1 first`, 'warn');
+    _mastersLog('warn', '⚠ Push skipped: no rows available (run S1 first)');
     switchSubTab(root, 'masterslog');
     return;
   }
   try {
-    const rows = rcState.finalComponents.map((c, i) => _mapToDatatableRow(c, i));
+    const rows = sourceRows.map((c, i) => _mapToDatatableRow(c, i));
+    const src = rcState.finalComponents.length ? 'finalComponents' : 'components(S1)';
     if (typeof window.__pcfSetDataTable === 'function') {
       window.__pcfSetDataTable(rows);
     } else {
@@ -985,6 +989,7 @@ async function runPushToDatatable(root) {
     }
     passLog(root, `✓ Pushed ${rows.length} rows`, 'success');
     _mastersLog('info', `✅ Push to Datatable complete — ${rows.length} rows`, {
+      source: src,
       mode: typeof window.__pcfSetDataTable === 'function'
         ? 'window.__pcfSetDataTable'
         : 'zustand.setExternalDataTable'
