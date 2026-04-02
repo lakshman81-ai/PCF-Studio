@@ -676,6 +676,7 @@ const CONFIG_FIELDS = [
   { key: 'supportName',       label: 'Support Name',           type: 'text' },
   { key: 'pipelineRefPrefix',  label: 'Pipeline Ref Prefix',         type: 'text' },
   { key: 'defaultPipingClass', label: 'Default Piping Class (2D CSV)', type: 'text' },
+  { key: 'enableBoreInchToMm', label: 'Enable Bore Inch→MM', type: 'checkbox' },
   { key: 'axisSnapAngle',     label: 'Axis Snap Angle (°)',    type: 'number', step: '0.5' },
   { key: 'sixAxP1Diameter',   label: '6Ax P1 Diameter (mm)',  type: 'number', step: '1' },
   { key: 'sixAxP1MaxDist',    label: '6Ax P1 Max Dist (mm)',  type: 'number' },
@@ -695,7 +696,7 @@ function buildConfigGrid(root) {
         ${f.step ? `step="${f.step}"` : ''}
         ${f.min !== undefined ? `min="${f.min}"` : ''}
         ${f.max !== undefined ? `max="${f.max}"` : ''}
-        value="${cfg[f.key] ?? ''}"
+        ${f.type === 'checkbox' ? ` ${cfg[f.key] ? 'checked' : ''}` : ` value="${cfg[f.key] ?? ''}"`}
         style="font-size:0.72rem;background:var(--bg-0);color:var(--text-primary);border:1px solid var(--steel);border-radius:3px;padding:2px 5px">
     </label>`).join('');
 
@@ -734,7 +735,7 @@ function applyConfig(root) {
   root.querySelectorAll('[data-cfg]').forEach(el => {
     const k = el.dataset.cfg;
     if (k.includes('.')) return; // handled separately below
-    const v = el.type === 'number' ? parseFloat(el.value) : el.value;
+    const v = el.type === 'number' ? parseFloat(el.value) : (el.type === 'checkbox' ? Boolean(el.checked) : el.value);
     if (!isNaN(v) || typeof v === 'string') patch[k] = v;
   });
   setRayConfig(patch);

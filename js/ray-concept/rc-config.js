@@ -4,6 +4,8 @@
  * 100% independent — zero imports from main app.
  */
 
+import { getOletBrlen, getTeeBrlen } from '../services/fallbackcontract.js';
+
 const _defaults = {
 
   // ── Stage 1: Parsing ──────────────────────────────────────────────────────
@@ -52,6 +54,7 @@ const _defaults = {
 
   // Default piping class for 2D CSV when none is resolved from data
   defaultPipingClass: 'CA150',
+  enableBoreInchToMm: false,
 
   // ── PCF Fixer datatable mapping (Final 2D CSV field → dataTable field) ─────
   // Reference documentation for the Push to Datatable feature.
@@ -310,11 +313,12 @@ export function ptEq(a, b, tol = 1e-3) {
 
 /** Look up BRLEN for a TEE (equal or reducing). */
 export function lookupTeeBreln(headerBore, branchBore, cfg) {
-  // Equal tee
+  const fromService = getTeeBrlen(headerBore, branchBore);
+  if (fromService != null) return fromService;
+
   if (Math.abs(headerBore - branchBore) < 1e-3) {
     return cfg.equalTeeTable[headerBore] ?? null;
   }
-  // Reducing tee
   const row = cfg.reducingTeeTable.find(
     r => Math.abs(r.h - headerBore) < 1e-3 && Math.abs(r.b - branchBore) < 1e-3
   );
@@ -323,6 +327,9 @@ export function lookupTeeBreln(headerBore, branchBore, cfg) {
 
 /** Compute BRLEN for an OLET using formula A + 0.5 * headerOD. */
 export function lookupOletBrlen(headerBore, branchBore, cfg) {
+  const fromService = getOletBrlen(headerBore, branchBore);
+  if (fromService != null) return fromService;
+
   const row = cfg.weldoletTable.find(
     r => Math.abs(r.h - headerBore) < 1e-3 && Math.abs(r.b - branchBore) < 1e-3
   );

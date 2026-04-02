@@ -7,6 +7,7 @@ const initialState = {
   config: {
     decimals: 4,
     angleFormat: "degrees",
+    enableBoreInchToMm: false,
     enabledChecks: JSON.parse(localStorage.getItem('enabledValidationChecks')) || {
         V1: true, V2: true, V3: true, V4: true, V5: true,
         V6: true, V7: true, V8: true, V9: true, V10: true,

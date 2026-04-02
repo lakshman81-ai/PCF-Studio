@@ -286,3 +286,13 @@
 [zip file (if true)]= N/A
 [Implementation Pending/Improvements Identified for future]: None.
 [28/03/2026 09:42:00] [Task 1] [push to github main force] [Incremented version to Ver 28-03-2026 (1) and executed force-push to main branch.] [js/ui/status-bar.js, Tasks.md, public/chat commands/Chat_28-03-2026.md] [N/A] [main] [N/A]
+
+[2026-04-02 00:00 UTC] [Task 2] [Wire fallbackcontract.js with master tables contract] [Added fallbackcontract abstraction over master-table-service and wired Ray BRLEN + CA8 resolver call sites to the contract so fallback scope is centralized.] [js/services/fallbackcontract.js; js/ray-concept/rc-config.js; js/ray-concept/rc-master-loader.js; js/ui/table/TableDataBuilder.js] [npm run build] [current-branch] [N/A]
+
+[Task 2] [Task Description]= "Wire fallbackcontract.js" "with these master tables as required"
+[Implementation Pending/Improvements Identified for future]: Add contract-level unit tests with browser-shim localStorage and add validator hook for PIPE/SUPPORT explicit CA8 stripping.
+
+[2026-04-02 00:00 UTC] [Task 3] [PCF Fixer syntax-fixer fallback audit for TEE/OLET CP/BP/BRLEN/Weight] [Refined DataProcessor fallback logic for Tee/BP orthogonal reconstruction, Olet CP/BRLEN fallback, and wired CA8 weight through fallback contract with trace logging.] [js/pcf-fixer/engine/DataProcessor.js; js/ui/status-bar.js] [npm run build] [current-branch] [N/A]
+
+[Task 3] [Task Description]= "In PCF fixer check syntax fixer logic" "Tee/BP CP,BP, Weight fallback"
+[Implementation Pending/Improvements Identified for future]: Validate branch-axis inference against real benchmark files and tune offset heuristics for atypical topologies.
