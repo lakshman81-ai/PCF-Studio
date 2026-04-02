@@ -182,6 +182,10 @@ export function lookupPipelineRefs(components, cfg) {
   const PIPE_COL_CANDIDATES = ['PIPE', 'Pipeline', 'PipeRef', 'Pipe Ref', 'pipe_ref', 'pipeline'];
   const sampleRow = lineDump[0] || {};
   const pipeCol   = _resolveHeader(sampleRow, null, PIPE_COL_CANDIDATES);
+  const lineNoCandidateCols = Object.keys(sampleRow).filter((k) => {
+    const n = _normKey(k);
+    return n.includes('line') && n.includes('no') && k !== pipeCol;
+  });
 
   // Elevation offset: added to Line Dump "Up" coord before matching
   const elevOffset = parseFloat(cfg?.smartData?.e3dElevationOffset ?? 0) || 0;
@@ -287,9 +291,21 @@ export function lookupPipelineRefs(components, cfg) {
     }
 
     // ── LINENO KEY ───────────────────────────────────────────────────
-    const lineNo = match[lineNoCol];
-    if (lineNo != null && String(lineNo).trim() !== '') {
-      comp.lineNoKey = String(lineNo).trim();
+    let lineNo = match[lineNoCol];
+    let lineNoText = lineNo != null ? String(lineNo).trim() : '';
+    if (lineNoText && entry.pipelineRef && lineNoText === entry.pipelineRef) {
+      const altCol = lineNoCandidateCols.find((col) => {
+        const v = match[col];
+        if (v == null) return false;
+        const t = String(v).trim();
+        return t !== '' && t !== entry.pipelineRef;
+      });
+      if (altCol) {
+        lineNoText = String(match[altCol]).trim();
+      }
+    }
+    if (lineNoText !== '') {
+      comp.lineNoKey = lineNoText;
       entry.lineNoKey = comp.lineNoKey;
       changed = true;
     }
