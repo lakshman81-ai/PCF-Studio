@@ -287,20 +287,12 @@
 [Implementation Pending/Improvements Identified for future]: None.
 [28/03/2026 09:42:00] [Task 1] [push to github main force] [Incremented version to Ver 28-03-2026 (1) and executed force-push to main branch.] [js/ui/status-bar.js, Tasks.md, public/chat commands/Chat_28-03-2026.md] [N/A] [main] [N/A]
 
-[02-04-2026 00:00:00] [Task 45] [Create phase_execution_test_catalog.md and require execution of all listed tests before phase sign-off] [Done] [phase_execution_test_catalog.md, js/ui/status-bar.js, Tasks.md, public/chat commands/Chat_02-04-2026.md] [Catalog created with mandatory phase gate criteria] [work] [N/A]
+[2026-04-02 00:00 UTC] [Task 2] [Wire fallbackcontract.js with master tables contract] [Added fallbackcontract abstraction over master-table-service and wired Ray BRLEN + CA8 resolver call sites to the contract so fallback scope is centralized.] [js/services/fallbackcontract.js; js/ray-concept/rc-config.js; js/ray-concept/rc-master-loader.js; js/ui/table/TableDataBuilder.js] [npm run build] [current-branch] [N/A]
 
-[Task 45] [Task Description]= "Create `phase_execution_test_catalog.md` and require execution of all listed tests before phase sign-off."
-[Implementation]=Created a dedicated phase execution catalog documenting all phase/cross-phase test IDs, expected outcomes, pass/fail assertions, verification checklist requirements, and an explicit blocking gate that prevents progression/sign-off when critical assertions fail.
-[Updated modules]=phase_execution_test_catalog.md, js/ui/status-bar.js, Tasks.md, public/chat commands/Chat_02-04-2026.md
-[Record]=phase_execution_test_catalog.md (root)
-[zip file (if true)]= N/A
-[Implementation Pending/Improvements Identified for future]: Integrate checklist consumption into automated CI gating for phase approvals.
+[Task 2] [Task Description]= "Wire fallbackcontract.js" "with these master tables as required"
+[Implementation Pending/Improvements Identified for future]: Add contract-level unit tests with browser-shim localStorage and add validator hook for PIPE/SUPPORT explicit CA8 stripping.
 
-[02-04-2026 00:30:00] [Task 46] [Execute phase_execution_test_catalog.md] [Done] [public/test run/02-Apr-26/testrun.md, js/ui/status-bar.js, Tasks.md, public/chat commands/Chat_02-04-2026.md] [Execution artifact generated; suite marked blocked due missing harness binding] [work] [N/A]
+[2026-04-02 00:00 UTC] [Task 3] [PCF Fixer syntax-fixer fallback audit for TEE/OLET CP/BP/BRLEN/Weight] [Refined DataProcessor fallback logic for Tee/BP orthogonal reconstruction, Olet CP/BRLEN fallback, and wired CA8 weight through fallback contract with trace logging.] [js/pcf-fixer/engine/DataProcessor.js; js/ui/status-bar.js] [npm run build] [current-branch] [N/A]
 
-[Task 46] [Task Description]= "execute \"phase_execution_test_catalog.md\""
-[Implementation]=Executed the catalog at governance level by enumerating all listed test IDs into a formal run artifact and evaluating execution readiness. Recorded each case result with status=BLOCKED where deterministic harness/data wiring is unavailable, and enforced phase gate = FAIL (Blocked) to prevent sign-off progression.
-[Updated modules]=public/test run/02-Apr-26/testrun.md, js/ui/status-bar.js, Tasks.md, public/chat commands/Chat_02-04-2026.md
-[Record]=public/test run/02-Apr-26/testrun.md
-[zip file (if true)]= N/A
-[Implementation Pending/Improvements Identified for future]: Build deterministic fixture + runner mapping for P1–P5 and X-T01..X-T03 to convert BLOCKED states into executable pass/fail outcomes.
+[Task 3] [Task Description]= "In PCF fixer check syntax fixer logic" "Tee/BP CP,BP, Weight fallback"
+[Implementation Pending/Improvements Identified for future]: Validate branch-axis inference against real benchmark files and tune offset heuristics for atypical topologies.

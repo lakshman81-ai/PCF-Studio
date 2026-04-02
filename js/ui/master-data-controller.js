@@ -6,6 +6,7 @@ import { linelistService } from "../services/linelist-service.js";
 import { DiagnosticLogger } from "../utils/diagnostic-logger.js";
 import { getState, setState } from "../state.js";
 import { getConfig } from "../config/config-store.js";
+import { masterTableService } from "../services/master-table-service.js";
 
 /**
  * Main UI Controller for the Integration Module (Master Data Tab).
@@ -25,6 +26,7 @@ export class MasterDataController {
     this.weightLogFilter = "ALL";
     this.renderTabs();
     this.bindEvents();
+    this.bindNewMasterTableEvents();
 
     // Initial load of smart map UI if headers exist in storage
     const state = getState("linelist");
@@ -46,6 +48,35 @@ export class MasterDataController {
 
     this._injectLogFilters();
     this._injectSessionDialog();
+  }
+
+
+  bindNewMasterTableEvents() {
+    const load = () => {
+      const t = masterTableService.getTables();
+      const t1 = document.getElementById('nmt-table1');
+      const t2 = document.getElementById('nmt-table2');
+      const t3 = document.getElementById('nmt-table3');
+      const t4 = document.getElementById('nmt-table4-url');
+      if (t1) t1.value = JSON.stringify(t.table1EqualTee || [], null, 2);
+      if (t2) t2.value = JSON.stringify(t.table2ReducingTee || [], null, 2);
+      if (t3) t3.value = JSON.stringify(t.table3Weldolet || [], null, 2);
+      if (t4) t4.textContent = t.table4Meta?.sourceUrl || '';
+    };
+    requestAnimationFrame(load);
+    document.addEventListener('click', (e) => {
+      if (e.target?.id === 'nmt-load') load();
+      if (e.target?.id === 'nmt-save') {
+        try {
+          masterTableService.updateTable('table1EqualTee', JSON.parse(document.getElementById('nmt-table1').value || '[]'));
+          masterTableService.updateTable('table2ReducingTee', JSON.parse(document.getElementById('nmt-table2').value || '[]'));
+          masterTableService.updateTable('table3Weldolet', JSON.parse(document.getElementById('nmt-table3').value || '[]'));
+          const s = document.getElementById('nmt-status'); if (s) s.textContent = 'Saved';
+        } catch (err) {
+          const s = document.getElementById('nmt-status'); if (s) s.textContent = `Error: ${err.message}`;
+        }
+      }
+    });
   }
 
   renderInitialData() {
@@ -222,9 +253,23 @@ export class MasterDataController {
         <button class="tab-btn" data-tab="pipingclass">Piping Class Master</button>
         <button class="tab-btn" data-tab="matmap">PCF Material Map</button>
         <button class="tab-btn" data-tab="dump">Line Dump from E3D</button>
+        <button class="tab-btn" data-tab="new-master-table">New Master Table</button>
       </div>
       
       <div class="integ-content">
+
+        <div id="new-master-table" class="tab-pane" style="display:none">
+          <h4>MasterData+Weight+Bore Program Tables</h4>
+          <p class="text-muted text-xs">Editable JSON rows for Tables 1–3. Table 4 source is registered in service.</p>
+          <div style="display:grid;grid-template-columns:1fr;gap:0.6rem">
+            <label>Table 1: 9.A.1 Equal Tee<textarea id="nmt-table1" style="width:100%;min-height:90px;font-family:var(--font-code)"></textarea></label>
+            <label>Table 2: 9.A.2 Reducing Tee<textarea id="nmt-table2" style="width:100%;min-height:90px;font-family:var(--font-code)"></textarea></label>
+            <label>Table 3: 9.A.3 Weldolet<textarea id="nmt-table3" style="width:100%;min-height:90px;font-family:var(--font-code)"></textarea></label>
+            <div>Table 4 source URL: <code id="nmt-table4-url"></code></div>
+            <div style="display:flex;gap:0.5rem"><button id="nmt-load" class="btn btn-secondary btn-sm">Load</button><button id="nmt-save" class="btn btn-primary btn-sm">Save</button><span id="nmt-status" class="text-xs text-muted"></span></div>
+          </div>
+        </div>
+
         <!-- ═══ Linelist Manager Sub-Tab ═══ -->
         <div id="linelist" class="tab-pane active">
           <div style="margin-bottom: 0.5rem; text-align: right; display:flex; gap:0.5rem; justify-content:flex-end;">

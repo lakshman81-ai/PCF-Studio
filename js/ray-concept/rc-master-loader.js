@@ -11,6 +11,7 @@
 
 import { linelistService } from '../services/linelist-service.js';
 import { dataManager }     from '../services/data-manager.js';
+import { resolveWeightForCa8 } from '../services/fallbackcontract.js';
 
 const WEIGHT_TYPES = new Set([
   'FLANGE', 'VALVE', 'REDUCER-CONCENTRIC', 'REDUCER-ECCENTRIC'
@@ -74,33 +75,18 @@ export async function loadMastersInto(components, cfg) {
       }
     }
 
-    // ── Step 3: CA8 (weight) from Weight Master ─────────────────────
-    if (WEIGHT_TYPES.has(comp.type) && weightData.length > 0 && comp.rating) {
-      const bore   = parseFloat(comp.bore) || 0;
-      const rating = parseFloat(comp.rating) || 0;
-      // Euclidean 3D distance between EP1 and EP2 (in mm)
-      const ep1 = comp.ep1 || {}, ep2 = comp.ep2 || {};
-      const dx = (ep2.x || 0) - (ep1.x || 0);
-      const dy = (ep2.y || 0) - (ep1.y || 0);
-      const dz = (ep2.z || 0) - (ep1.z || 0);
-      const length = Math.sqrt(dx*dx + dy*dy + dz*dz);
-
-      let best = null, bestDelta = Infinity;
-      for (const w of weightData) {
-        const wBore   = parseFloat(w['DN'] || w['NS'] || w['Size (NPS)'] || w['Size'] || 0);
-        const wRating = parseFloat(w['Rating'] || 0);
-        const wLen    = parseFloat(w['RF-F/F'] || w['RF/RTJ'] || w['Length'] || 0);
-        const wKg     = parseFloat(w['RF/RTJ KG'] || w['Weight'] || w['KG'] || 0);
-        if (Math.abs(wBore - bore) > 1)  continue;
-        if (rating > 0 && wRating > 0 && wRating !== rating) continue;
-        const delta = Math.abs(wLen - length);
-        if (delta <= 6 && delta < bestDelta) {
-          best = wKg;
-          bestDelta = delta;
-        }
-      }
-      if (best != null) {
-        comp.ca8 = best;
+    // ── Step 3: CA8 (weight) via unified resolver ────────────────────
+    if (WEIGHT_TYPES.has(comp.type) && weightData.length > 0) {
+      const resolution = resolveWeightForCa8({
+        type: comp.type,
+        directWeight: comp.ca8,
+        boreMm: comp.bore,
+        ratingClass: comp.rating,
+        valveType: comp.itemDescription || comp.description || ''
+      }, { includeApprovedFittings: true });
+      if (resolution.weight != null) {
+        comp.ca8 = resolution.weight;
+        comp.ca8Trace = resolution.trace.join(' > ');
         changed = true;
       }
     }
