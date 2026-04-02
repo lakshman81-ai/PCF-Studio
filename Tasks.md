@@ -286,3 +286,10 @@
 [zip file (if true)]= N/A
 [Implementation Pending/Improvements Identified for future]: None.
 [28/03/2026 09:42:00] [Task 1] [push to github main force] [Incremented version to Ver 28-03-2026 (1) and executed force-push to main branch.] [js/ui/status-bar.js, Tasks.md, public/chat commands/Chat_28-03-2026.md] [N/A] [main] [N/A]
+[02/04/2026 04:10:01] [Task 2] [Create fallback geometry contract + schema] [Created a single source-of-truth fallback schema at `js/pcf-fixer/engine/FallbackContract.js` and documented strict priority, formulas, tolerances, validation fail codes, and upstream/downstream module impacts in `Docs/EXPLAINERS/fallback-geometry-contract.md`. Updated app version per release protocol.] [js/pcf-fixer/engine/FallbackContract.js, Docs/EXPLAINERS/fallback-geometry-contract.md, js/ui/status-bar.js, Tasks.md, public/chat commands/Chat_02-04-2026.md] [N/A] [$(git rev-parse --abbrev-ref HEAD)] [N/A]
+[Task 2] [Task Description]= 'Create a single fallback contract document and schema (module-level constant) with priority, formulas/tolerances, and impact mapping for TEE/OLET/BEND.'
+[Implementation]=Formalized the fallback contract into a module-level immutable constant plus validation code map; encoded strict priority (direct→derived→9A→hard fail), explicit formulas for TEE/OLET/BEND, and numeric tolerance envelope (1.0 mm). Added an explainer doc to drive upstream parser/DataProcessor alignment and downstream emitter/validator rule outcomes.
+[Updated modules]=js/pcf-fixer/engine/FallbackContract.js, Docs/EXPLAINERS/fallback-geometry-contract.md, js/ui/status-bar.js, Tasks.md, public/chat commands/Chat_02-04-2026.md
+[Record]=N/A
+[zip file (if true)]=N/A
+[Implementation Pending/Improvements Identified for future]: Integrate contract enforcement directly into Stage1 parser, DataProcessor, and validator rule wiring in a follow-up task.
