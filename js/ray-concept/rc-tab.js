@@ -14,6 +14,7 @@ import { debugLog, clearLog, getLog, renderDebugTab } from './rc-debug.js';
 import { loadMastersInto }    from './rc-master-loader.js';
 import { lookupPipelineRefs, formatDetailForLog } from './rc-pipeline-lookup.js';
 import { getConfig }          from '../config/config-store.js';
+import { readExcelAsCSV, isExcelFile } from '../input/excel-parser.js';
 
 // ── Internal state (isolated to this tab) ────────────────────────────────────
 const rcState = {
@@ -74,8 +75,8 @@ function buildPanelHTML() {
     <!-- Brand zone -->
     <div class="rc-tier-brand">
       <span class="rc-brand-mark">⚡ RAY</span>
-      <input type="file" id="rc-file-input" accept=".csv,.txt" style="display:none">
-      <button id="rc-btn-upload" style="${actionPill}">${ICO.upload} CSV</button>
+      <input type="file" id="rc-file-input" accept=".csv,.txt,.xlsx,.xls,.xlsm" style="display:none">
+      <button id="rc-btn-upload" style="${actionPill}">${ICO.upload} CSV / XLSX</button>
       <span id="rc-filename" class="rc-filename">No file loaded</span>
     </div>
     <span class="rc-brand-sep"></span>
@@ -260,7 +261,7 @@ function wireEvents(root) {
   // File upload
   root.querySelector('#rc-btn-upload').addEventListener('click', () =>
     root.querySelector('#rc-file-input').click());
-  root.querySelector('#rc-file-input').addEventListener('change', e => onFileLoad(e, root));
+  root.querySelector('#rc-file-input').addEventListener('change', e => { void onFileLoad(e, root); });
 
   // RayConfig toggle
   root.querySelector('#rc-btn-config-toggle').addEventListener('click', () =>
@@ -371,23 +372,34 @@ function setConnDone(root, id) {
 }
 
 // ── File load ─────────────────────────────────────────────────────────────────
-function onFileLoad(e, root) {
+async function onFileLoad(e, root) {
   const file = e.target.files[0];
   if (!file) return;
   rcState.rawFileName = file.name;
   root.querySelector('#rc-filename').textContent = file.name;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    rcState.rawCsvText = ev.target.result;
+
+  try {
+    passLog(root, `── INPUT  ${_now()} ─────────`, 'header');
+    passLog(root, `  ${file.name}`, 'info');
+    if (isExcelFile(file)) {
+      const { csv, sheetName } = await readExcelAsCSV(file);
+      rcState.rawCsvText = csv;
+      passLog(root, `  ∙ Source sheet: ${sheetName}`, 'stat');
+    } else {
+      rcState.rawCsvText = await file.text();
+    }
+
     setBtn(root, '#rc-btn-s1', true);
     setBtn(root, '#rc-btn-run-all', true);
     setStepStatus(root, '#rc-btn-s1', 'ready');
-    const rawLines = ev.target.result.split('\n').length;
-    passLog(root, `── INPUT  ${_now()} ─────────`, 'header');
-    passLog(root, `  ${file.name}`, 'info');
+    const rawLines = String(rcState.rawCsvText || '').split('\n').length;
     passLog(root, `  ∙ ${rawLines} raw lines`, 'stat');
-  };
-  reader.readAsText(file);
+  } catch (err) {
+    passLog(root, `✕ Input load failed: ${err.message}`, 'error');
+    _mastersLog('error', '❌ Input load failed', { file: file.name, error: err.message });
+  } finally {
+    e.target.value = '';
+  }
 }
 
 // ── Stage runners ─────────────────────────────────────────────────────────────
@@ -948,29 +960,47 @@ function _mapToDatatableRow(comp, rowIndex) {
     supportName: comp.supportName ?? '',
     supportGuid: comp.supportGuid ?? '',
     pipelineRef: comp.pipelineRef ?? '',
+    lineNoKey:   comp.lineNoKey   ?? '',
+    pipingClass: comp.pipingClass ?? '',
+    rating:      comp.rating      ?? '',
     ca
   };
 }
 
 async function runPushToDatatable(root) {
-  if (!rcState.finalComponents.length) {
-    passLog(root, `⚠ Run S3/S4 first`, 'warn');
+  const sourceRows = rcState.finalComponents.length
+    ? rcState.finalComponents
+    : rcState.components;
+  if (!sourceRows.length) {
+    passLog(root, `⚠ No rows available. Run S1 first`, 'warn');
+    _mastersLog('warn', '⚠ Push skipped: no rows available (run S1 first)');
+    switchSubTab(root, 'masterslog');
     return;
   }
   try {
-    const rows = rcState.finalComponents.map((c, i) => _mapToDatatableRow(c, i));
+    const rows = sourceRows.map((c, i) => _mapToDatatableRow(c, i));
+    const src = rcState.finalComponents.length ? 'finalComponents' : 'components(S1)';
     if (typeof window.__pcfSetDataTable === 'function') {
       window.__pcfSetDataTable(rows);
     } else {
       // Fallback: PCF Fixer not mounted yet — try Zustand store directly
-      const { useStore } = await import('/js/pcf-fixer/store/useStore.js');
-      useStore.getState().setDataTable(rows);
+      const { useStore } = await import('../pcf-fixer/store/useStore.js');
+      useStore.getState().setExternalDataTable(rows);
     }
     passLog(root, `✓ Pushed ${rows.length} rows`, 'success');
+    _mastersLog('info', `✅ Push to Datatable complete — ${rows.length} rows`, {
+      source: src,
+      mode: typeof window.__pcfSetDataTable === 'function'
+        ? 'window.__pcfSetDataTable'
+        : 'zustand.setExternalDataTable'
+    });
+    switchSubTab(root, 'masterslog');
     const statusEl = root.querySelector('#rc-masters-status');
     if (statusEl) statusEl.textContent = `✓ Pushed ${rows.length} rows`;
   } catch (err) {
     passLog(root, `✕ Push: ${err.message}`, 'error');
+    _mastersLog('error', '❌ Push to Datatable failed', { error: err.message });
+    switchSubTab(root, 'masterslog');
     const statusEl = root.querySelector('#rc-masters-status');
     if (statusEl) statusEl.textContent = `✕ Push failed`;
   }
