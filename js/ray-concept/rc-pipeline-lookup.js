@@ -175,8 +175,7 @@ export function lookupPipelineRefs(components, cfg) {
   const lineNoCol = _resolveHeader(lineDump[0] || {}, hMap.lineNo, [
     ...LINE_NO_ALIASES,
     'LINE NO.(DERIVED)',
-    'LINE NO (DERIVED)',
-    'LINENO KEY'
+    'LINE NO (DERIVED)'
   ]) || 'Line Number (Derived)';
 
   // Auto-detect which column carries the pipeline/pipe name

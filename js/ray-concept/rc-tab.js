@@ -119,8 +119,8 @@ function buildPanelHTML() {
     <!-- Data Enrichment group -->
     <div class="rc-action-group enrichment">
       <span class="rc-action-group-label">Enrich</span>
-      <button id="rc-btn-load-masters" style="${actionPill}" disabled>${ICO.database} Masters</button>
       <button id="rc-btn-pipeline-lookup" style="${actionPill}" disabled title="Match component coordinates against Line Dump from E3D to populate Pipeline Reference, Line No Key, Piping Class and Rating on Final 2D CSV">${ICO.mapPin} Pipeline Ref</button>
+      <button id="rc-btn-load-masters" style="${actionPill}" disabled>${ICO.database} Masters</button>
       <span id="rc-masters-status" style="font-size:0.68rem;color:var(--text-muted);font-family:var(--font-inter)"></span>
     </div>
     <!-- Interface group -->
@@ -540,25 +540,34 @@ async function runS4(root) {
 }
 
 async function runLoadMasters(root) {
-  if (!rcState.components.length) return;
+  const targets = rcState.finalComponents.length ? rcState.finalComponents : rcState.components;
+  if (!targets.length) return;
+  const usingFinal = rcState.finalComponents.length > 0;
   const statusEl = root.querySelector('#rc-masters-status');
   if (statusEl) statusEl.textContent = '⏳ Loading…';
-  _mastersLog('info', '📥 Masters started', { components: rcState.components.length });
+  _mastersLog('info', `📥 Masters started (${usingFinal ? 'Final CSV' : '2D CSV'})`, { components: targets.length });
   try {
     const cfg = getConfig();
     _mastersLog('info', 'Config loaded', {
       ratingMap2: JSON.stringify(cfg?.ratingPrefixMap?.twoChar || {}),
       ratingMap1: JSON.stringify(cfg?.ratingPrefixMap?.oneChar || {})
     });
-    const updated = await loadMastersInto(rcState.components, cfg);
-    _rebuildCsv2D();
-    render2DTable(root, rcState.csv2DText);
+    const updated = await loadMastersInto(targets, cfg);
+    if (usingFinal) {
+      rcState.finalCsv2DText = emit2DCSV(rcState.finalComponents, getRayConfig());
+      render2DTable(root, rcState.finalCsv2DText);
+      activatePreviewBtn(root, 'final2dcsv');
+    } else {
+      _rebuildCsv2D();
+      render2DTable(root, rcState.csv2DText);
+      activatePreviewBtn(root, '2dcsv');
+    }
     if (statusEl) statusEl.textContent = `✓ Updated ${updated} components`;
     passLog(root, `✓ Masters: ${updated} enriched`, 'success');
-    _mastersLog('info', `✅ Masters complete — ${updated}/${rcState.components.length} components updated`);
+    _mastersLog('info', `✅ Masters complete — ${updated}/${targets.length} components updated`);
     // Per-component detail log (CA values + rating)
     let withCA = 0, withRating = 0, noLineno = 0;
-    for (const c of rcState.components) {
+    for (const c of targets) {
       if (c.ca1 || c.ca2 || c.ca5 || c.ca10) withCA++;
       if (c.rating) withRating++;
       if (!c.lineNoKey) noLineno++;
@@ -569,10 +578,12 @@ async function runLoadMasters(root) {
       });
     }
     _mastersLog('info', 'Summary', { withCA, withRating, noLineNoKey: noLineno });
+    switchSubTab(root, 'masterslog');
   } catch (err) {
     if (statusEl) statusEl.textContent = `✕ ${err.message}`;
     passLog(root, `✕ Masters: ${err.message}`, 'error');
     _mastersLog('error', `❌ ${err.message}`);
+    switchSubTab(root, 'masterslog');
   }
 }
 
@@ -980,19 +991,23 @@ async function runPushToDatatable(root) {
   try {
     const rows = sourceRows.map((c, i) => _mapToDatatableRow(c, i));
     const src = rcState.finalComponents.length ? 'finalComponents' : 'components(S1)';
+    const delivery = [];
     if (typeof window.__pcfSetDataTable === 'function') {
       window.__pcfSetDataTable(rows);
-    } else {
-      // Fallback: PCF Fixer not mounted yet — try Zustand store directly
+      delivery.push('window.__pcfSetDataTable');
+    }
+    // Mirror directly to store too, to avoid stale global-hook timing.
+    try {
       const { useStore } = await import('../pcf-fixer/store/useStore.js');
       useStore.getState().setExternalDataTable(rows);
+      delivery.push('zustand.setExternalDataTable');
+    } catch (storeErr) {
+      _mastersLog('warn', '⚠ Secondary datatable mirror failed', { error: storeErr.message });
     }
     passLog(root, `✓ Pushed ${rows.length} rows`, 'success');
     _mastersLog('info', `✅ Push to Datatable complete — ${rows.length} rows`, {
       source: src,
-      mode: typeof window.__pcfSetDataTable === 'function'
-        ? 'window.__pcfSetDataTable'
-        : 'zustand.setExternalDataTable'
+      mode: delivery.join(' + ') || 'none'
     });
     switchSubTab(root, 'masterslog');
     const statusEl = root.querySelector('#rc-masters-status');
