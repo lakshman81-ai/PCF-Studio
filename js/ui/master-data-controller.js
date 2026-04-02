@@ -52,18 +52,61 @@ export class MasterDataController {
 
 
   bindNewMasterTableEvents() {
+    const BATCH_SIZE = 60;
+
+    const appendRowsInBatches = (tbody, rows, cols, statusEl, label) => {
+      let i = 0;
+      const total = rows.length;
+      const step = () => {
+        const frag = document.createDocumentFragment();
+        const end = Math.min(i + BATCH_SIZE, total);
+        for (; i < end; i++) {
+          const tr = document.createElement('tr');
+          for (const c of cols) {
+            const td = document.createElement('td');
+            td.style.cssText = 'border:1px solid var(--steel);padding:3px 6px';
+            td.textContent = rows[i]?.[c] ?? '';
+            tr.appendChild(td);
+          }
+          frag.appendChild(tr);
+        }
+        tbody.appendChild(frag);
+        if (statusEl) statusEl.textContent = `${label} (${Math.min(i, total)}/${total})`;
+        if (i < total) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+
     const renderTable = (title, rows) => {
       const wrap = document.createElement('div');
       wrap.className = 'preview-table-wrap';
       wrap.style.cssText = 'border:1px solid var(--steel);border-radius:4px;background:var(--bg-panel);padding:0.45rem';
+      const titleEl = document.createElement('div');
+      titleEl.style.cssText = 'font-size:0.78rem;font-weight:600;color:var(--amber);margin-bottom:0.35rem';
+      titleEl.textContent = title;
+
+      const holder = document.createElement('div');
+      holder.style.cssText = 'max-height:260px;overflow:auto';
+      const table = document.createElement('table');
+      table.style.cssText = 'width:100%;border-collapse:collapse;font-size:0.72rem';
+      const thead = document.createElement('thead');
+      const hr = document.createElement('tr');
       const cols = Object.keys(rows[0] || {});
-      const thead = cols.map(c => `<th style="position:sticky;top:0;background:var(--bg-2);border:1px solid var(--steel);padding:4px 6px;text-align:left">${c}</th>`).join('');
-      const tbody = rows.map(r => `<tr>${cols.map(c => `<td style="border:1px solid var(--steel);padding:3px 6px">${r[c] ?? ''}</td>`).join('')}</tr>`).join('');
-      wrap.innerHTML = `
-        <div style="font-size:0.78rem;font-weight:600;color:var(--amber);margin-bottom:0.35rem">${title}</div>
-        <div style="max-height:260px;overflow:auto">
-          <table style="width:100%;border-collapse:collapse;font-size:0.72rem"><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table>
-        </div>`;
+      for (const c of cols) {
+        const th = document.createElement('th');
+        th.style.cssText = 'position:sticky;top:0;background:var(--bg-2);border:1px solid var(--steel);padding:4px 6px;text-align:left';
+        th.textContent = c;
+        hr.appendChild(th);
+      }
+      thead.appendChild(hr);
+      const tbody = document.createElement('tbody');
+      table.appendChild(thead);
+      table.appendChild(tbody);
+      holder.appendChild(table);
+      wrap.appendChild(titleEl);
+      wrap.appendChild(holder);
+      const s = document.getElementById('nmt-status');
+      appendRowsInBatches(tbody, rows, cols, s, `Loading ${title}`);
       return wrap;
     };
 
@@ -72,13 +115,14 @@ export class MasterDataController {
       const grid = document.getElementById('nmt-grid-wrap');
       if (!grid) return;
       grid.innerHTML = '';
+      const s = document.getElementById('nmt-status');
+      if (s) s.textContent = 'Loading read-only tables in background…';
       grid.appendChild(renderTable('Table 1 — 9.A.1 Equal Tee (ASME B16.9)', t.table1EqualTee || []));
       grid.appendChild(renderTable('Table 2 — 9.A.2 Reducing Tee (ASME B16.9)', t.table2ReducingTee || []));
       grid.appendChild(renderTable('Table 3 — 9.A.3 Weldolet (MSS SP-97)', t.table3Weldolet || []));
       const t4Rows = masterTableService.getTable4Rows();
       grid.appendChild(renderTable(`Table 4 — Weight Master (in-app) rows: ${t4Rows.length} (preview: first 25)`, t4Rows.slice(0, 25)));
-      const s = document.getElementById('nmt-status');
-      if (s) s.textContent = 'Read-only tables loaded.';
+      if (s) setTimeout(() => { s.textContent = 'Read-only tables loaded progressively.'; }, 80);
     };
 
     requestAnimationFrame(load);
