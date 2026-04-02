@@ -126,7 +126,8 @@ function derivePipelineRef(refNo, cfg) {
   if (!refNo) return '';
   // Strip component suffix (last _xxx segment)
   const base = refNo.replace(/_[^_]+$/, '');
-  return `${cfg.pipelineRefPrefix} ${base}`;
+  const prefix = String(cfg?.pipelineRefPrefix ?? '').trim();
+  return prefix ? `${prefix} ${base}` : base;
 }
 
 // ── Compute BRLEN from BP and CP ─────────────────────────────────────────────
