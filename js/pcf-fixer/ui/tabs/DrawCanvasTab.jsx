@@ -4,6 +4,7 @@ import { useStore } from '../../store/useStore';
 import { useAppContext } from '../../store/AppContext';
 import { drawCanvasReducer, initialState } from '../../store/drawCanvasReducer';
 import { dbg } from '../../utils/debugGate';
+import { emitDrawMetric } from '../../utils/drawMetrics';
 import { OrbitControls, OrthographicCamera, PerspectiveCamera, GizmoHelper, GizmoViewport, Line, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { ViewCube } from '../components/ViewCube';
@@ -149,9 +150,16 @@ const DrawCanvas_DrawTool = ({ activeTool, drawnPipes, dcDispatch, gridConfig, o
     // Handle Esc to cancel drawing
     useEffect(() => {
         const handleKeyDown = (e) => {
+            const activeTab = useStore.getState().activeTab;
+            if (activeTab && activeTab !== 'draw') return;
+
             if (e.key === 'Escape') {
+                if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+
                 if (startPt) {
                     dbg.event('DRAW_ESCAPE', 'Drawing cancelled', { hadStartPt: !!startPt });
+                    dcDispatch({ type: 'INCREMENT_METRIC', payload: 'cancelCount' });
+                    emitDrawMetric({ tool: activeTool, phase: 'CANCEL', result: 'ESC' });
                     setStartPt(null);
                     setCurrPt(null);
                 }
@@ -159,11 +167,14 @@ const DrawCanvas_DrawTool = ({ activeTool, drawnPipes, dcDispatch, gridConfig, o
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [startPt]);
+    }, [startPt, activeTool]);
 
     const handlePointerDown = (e) => {
         if (!['DRAW_PIPE', 'DRAW_BEND', 'DRAW_TEE', 'FLANGE', 'VALVE', 'REDUCER', 'SUPPORT'].includes(activeTool)) return;
         e.stopPropagation();
+
+        const t0 = performance.now();
+        try {
 
         // Snap to existing geometry if hovered, otherwise grid snap
         let nearestSnap = null;
@@ -219,6 +230,8 @@ const DrawCanvas_DrawTool = ({ activeTool, drawnPipes, dcDispatch, gridConfig, o
                     const newPipes = [...drawnPipes];
                     newPipes.splice(targetPipe._index + 1, 0, supportRow);
                     dcDispatch({ type: 'SET_ALL_COMPONENTS', payload: newPipes });
+                    dcDispatch({ type: 'INCREMENT_METRIC', payload: 'successCount' });
+                    emitDrawMetric({ tool: 'SUPPORT', phase: 'COMMIT', result: 'SUCCESS', latencyMs: performance.now() - t0 });
                 }
                 return;
             }
@@ -227,6 +240,8 @@ const DrawCanvas_DrawTool = ({ activeTool, drawnPipes, dcDispatch, gridConfig, o
         if (['FLANGE', 'VALVE', 'REDUCER'].includes(activeTool)) {
             if (!nearestSnap) {
                 alert('Non-pipe components must be snapped to an existing pipeline endpoint.');
+                dcDispatch({ type: 'INCREMENT_METRIC', payload: 'failCount' });
+                emitDrawMetric({ tool: activeTool, phase: 'ERROR', result: 'MISSING_SNAP', latencyMs: performance.now() - t0 });
                 return;
             }
 
@@ -302,6 +317,8 @@ const DrawCanvas_DrawTool = ({ activeTool, drawnPipes, dcDispatch, gridConfig, o
                 ca9: targetPipe ? targetPipe.ca9 : '',
                 ca10: targetPipe ? targetPipe.ca10 : ''
             }});
+            dcDispatch({ type: 'INCREMENT_METRIC', payload: 'successCount' });
+            emitDrawMetric({ tool: activeTool, phase: 'COMMIT', result: 'SUCCESS', latencyMs: performance.now() - t0 });
             return;
         }
 
@@ -314,6 +331,7 @@ const DrawCanvas_DrawTool = ({ activeTool, drawnPipes, dcDispatch, gridConfig, o
         if (!startPt) {
             setStartPt(snappedPt);
             setCurrPt(snappedPt.clone());
+            emitDrawMetric({ tool: activeTool, phase: 'STEP1', result: 'ARMED', latencyMs: performance.now() - t0 });
         } else {
             if (snappedPt.distanceTo(startPt) > 0) {
                 let actualStart = startPt;
@@ -384,6 +402,14 @@ const DrawCanvas_DrawTool = ({ activeTool, drawnPipes, dcDispatch, gridConfig, o
 
             // Continuous draw
             setStartPt(snappedPt);
+            dcDispatch({ type: 'INCREMENT_METRIC', payload: 'successCount' });
+            emitDrawMetric({ tool: activeTool, phase: 'COMMIT', result: 'SUCCESS', latencyMs: performance.now() - t0 });
+        }
+        } catch (err) {
+            dbg.error('DRAW_TOOL', 'Fatal error during drawing operation', { error: err.message });
+            setStartPt(null);
+            dcDispatch({ type: 'INCREMENT_METRIC', payload: 'failCount' });
+            emitDrawMetric({ tool: activeTool, phase: 'ERROR', result: 'FATAL', errorClass: err.message, latencyMs: performance.now() - t0 });
         }
     };
 
@@ -658,27 +684,28 @@ const DrawCanvas_ConversionTools = ({ activeTool, drawnPipes, dcDispatch, appSet
     const handlePointerDown = (e, index) => {
         e.stopPropagation();
 
-        let newSel = [...selectedIndices];
-        if (newSel.includes(index)) {
-            newSel = newSel.filter(i => i !== index);
-        } else {
-            newSel.push(index);
-        }
+        try {
+            let newSel = [...selectedIndices];
+            if (newSel.includes(index)) {
+                newSel = newSel.filter(i => i !== index);
+            } else {
+                newSel.push(index);
+            }
 
-        setSelectedIndices(newSel);
+            setSelectedIndices(newSel);
 
-        // Check if we meet requirements
-        if (activeTool === 'CONVERT_BEND' && newSel.length === 2) {
-            const p1 = drawnPipes[newSel[0]];
-            const p2 = drawnPipes[newSel[1]];
+            // Check if we meet requirements
+            if (activeTool === 'CONVERT_BEND' && newSel.length === 2) {
+                const p1 = drawnPipes[newSel[0]];
+                const p2 = drawnPipes[newSel[1]];
 
-            // Simple intersection assumed at endpoints for bend
-            const pts = [
-                new THREE.Vector3(p1.ep1.x, p1.ep1.y, p1.ep1.z),
-                new THREE.Vector3(p1.ep2.x, p1.ep2.y, p1.ep2.z),
-                new THREE.Vector3(p2.ep1.x, p2.ep1.y, p2.ep1.z),
-                new THREE.Vector3(p2.ep2.x, p2.ep2.y, p2.ep2.z)
-            ];
+                // Simple intersection assumed at endpoints for bend
+                const pts = [
+                    new THREE.Vector3(p1.ep1.x, p1.ep1.y, p1.ep1.z),
+                    new THREE.Vector3(p1.ep2.x, p1.ep2.y, p1.ep2.z),
+                    new THREE.Vector3(p2.ep1.x, p2.ep1.y, p2.ep1.z),
+                    new THREE.Vector3(p2.ep2.x, p2.ep2.y, p2.ep2.z)
+                ];
 
             let cp = null;
             let d1 = null, d2 = null;
@@ -817,6 +844,11 @@ const DrawCanvas_ConversionTools = ({ activeTool, drawnPipes, dcDispatch, appSet
                 alert('Pipes must all share a common center point.');
                 setSelectedIndices([]);
             }
+        }
+        } catch (err) {
+            dbg.error('CONVERT_TOOL', 'Fatal error during bend/tee conversion', { error: err.message, index });
+            setSelectedIndices([]);
+            dcDispatch({ type: 'SET_TOOL', payload: 'VIEW' });
         }
     };
 
@@ -1023,7 +1055,11 @@ export function DrawCanvasTab() {
     // Handle Esc globally inside Draw Canvas to cancel tool selection
     useEffect(() => {
         const handleKeyDown = (e) => {
+            const activeTab = useStore.getState().activeTab;
+            if (activeTab && activeTab !== 'draw') return;
+
             if (e.key === 'Escape') {
+                if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
                 dcDispatch({ type: 'SET_TOOL', payload: 'VIEW' });
             }
         };
@@ -1053,7 +1089,12 @@ export function DrawCanvasTab() {
                         const data = useStore.getState().dataTable;
                         if (data && data.length > 0) {
                             if (window.confirm('Pulling from 3D Topo will overwrite the current drawing. Continue?')) {
-                                dcDispatch({ type: 'SET_ALL_COMPONENTS', payload: JSON.parse(JSON.stringify(data)) });
+                                const payloadData = JSON.parse(JSON.stringify(data)).map(r => ({
+                                    ...r,
+                                    rowUid: r.rowUid || `topo_${r._rowIndex}_${Date.now()}`,
+                                    sourceDomain: r.sourceDomain || 'main3D'
+                                }));
+                                dcDispatch({ type: 'SET_ALL_COMPONENTS', payload: payloadData });
                             }
                         } else {
                             alert('No data in 3D Topo to pull.');
@@ -1084,16 +1125,32 @@ export function DrawCanvasTab() {
                     <button onClick={() => {
                         if (drawnPipes.length > 0) {
                             if (window.confirm('Pushing to 3D Topo will overwrite the main canvas. Continue?')) {
-                                let newTable = JSON.parse(JSON.stringify(drawnPipes));
-                                // Auto assign pipeline refs immediately before pushing
-                                const { updatedTable: autoTable, fixLog } = autoAssignPipelineRefs(newTable);
-                                newTable = autoTable;
-                                fixLog.forEach(log => dispatch({ type: "ADD_LOG", payload: log }));
+                                try {
+                                    useStore.getState().pushHistory('Push from Draw Canvas');
 
-                                useStore.getState().setDataTable(newTable);
-                                dispatch({ type: 'APPLY_GAP_FIX', payload: { updatedTable: newTable } });
-                                dispatch({ type: 'ADD_LOG', payload: { stage: 'INTERACTIVE', type: 'Info', message: 'Data pushed from Draw Canvas successfully.' } });
-                                alert('Data pushed to main 3D canvas successfully.');
+                                    let newTable = JSON.parse(JSON.stringify(drawnPipes)).map((r, i) => ({
+                                        ...r,
+                                        rowUid: r.rowUid || `draw_${i}_${Date.now()}`,
+                                        sourceDomain: 'drawCanvas',
+                                        lastMutationAt: Date.now()
+                                    }));
+
+                                    // Auto assign pipeline refs immediately before pushing
+                                    const { updatedTable: autoTable, fixLog } = autoAssignPipelineRefs(newTable);
+                                    newTable = autoTable;
+                                    fixLog.forEach(log => dispatch({ type: "ADD_LOG", payload: log }));
+
+                                    useStore.getState().setDataTable(newTable);
+                                    dispatch({ type: 'APPLY_GAP_FIX', payload: { updatedTable: newTable } });
+                                    dispatch({ type: 'ADD_LOG', payload: { stage: 'INTERACTIVE', type: 'Info', message: 'Data pushed from Draw Canvas successfully.' } });
+
+                                    if (typeof dbg !== 'undefined') dbg.state('DRAW_CANVAS', 'Pushed to 3D Topo', { components: newTable.length });
+                                    alert('Data pushed to main 3D canvas successfully.');
+                                } catch (e) {
+                                    if (typeof dbg !== 'undefined') dbg.error('DRAW_CANVAS', 'Push to Topo failed', e);
+                                    dispatch({ type: 'ADD_LOG', payload: { stage: 'INTERACTIVE', type: 'Error', message: `Failed to push Draw Canvas data: ${e.message}` } });
+                                    alert('Error pushing data. See log for details.');
+                                }
                             }
                         } else {
                             alert('No drawn components to push.');
@@ -1163,37 +1220,37 @@ export function DrawCanvasTab() {
 
                 {/* Left Vertical Toolbar (48px wide) */}
                 <div className="w-12 bg-slate-900 border-r border-slate-700 flex flex-col items-center py-2 gap-2 z-10 shrink-0">
-                    <button className={`w-8 h-8 rounded flex items-center justify-center ${localOrthoMode ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => setLocalOrthoMode(!localOrthoMode)} title="Toggle Ortho/Perspective">
+                    <button data-testid="drawbtn-ortho" className={`w-8 h-8 rounded flex items-center justify-center ${localOrthoMode ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => setLocalOrthoMode(!localOrthoMode)} title="Toggle Ortho/Perspective">
                         <span className="font-bold text-xs uppercase">{localOrthoMode ? 'ORT' : 'PER'}</span>
                     </button>
                     <div className="w-6 h-px bg-slate-700 my-1"></div>
-                    <button className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'VIEW' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'VIEW' })} title="Select (Orbit)">
+                    <button data-testid="drawbtn-view" className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'VIEW' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'VIEW' })} title="Select (Orbit)">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 19l-7-7 7-7"/><path d="M19 12H5"/></svg>
                     </button>
-                    <button className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'PAN' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'PAN' })} title="Pan">
+                    <button data-testid="drawbtn-pan" className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'PAN' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'PAN' })} title="Pan">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18.44 2.05L21.95 5.56L18.44 9.07"/><path d="M5.56 21.95L2.05 18.44L5.56 14.93"/><path d="M2.05 18.44L21.95 5.56"/></svg>
                     </button>
-                    <button className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'ORBIT' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'ORBIT' })} title="Orbit">
+                    <button data-testid="drawbtn-orbit" className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'ORBIT' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'ORBIT' })} title="Orbit">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
                     </button>
                     <div className="w-6 h-px bg-slate-700 my-1"></div>
-                    <button className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'DRAW_PIPE' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'DRAW_PIPE' })} title="Draw Pipe">
+                    <button data-testid="drawbtn-pipe" className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'DRAW_PIPE' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'DRAW_PIPE' })} title="Draw Pipe">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="2" y1="22" x2="22" y2="2"/></svg>
                     </button>
-                    <button className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'DRAW_BEND' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'DRAW_BEND' })} title="Draw Bend">
+                    <button data-testid="drawbtn-bend" className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'DRAW_BEND' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'DRAW_BEND' })} title="Draw Bend">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 22h14a2 2 0 0 0 2-2V6l-3-4H6L3 6v14a2 2 0 0 0 2 2z"/></svg>
                     </button>
-                    <button className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'DRAW_TEE' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'DRAW_TEE' })} title="Draw Tee">
+                    <button data-testid="drawbtn-tee" className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'DRAW_TEE' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'DRAW_TEE' })} title="Draw Tee">
                         <span className="font-bold text-xs uppercase text-center w-full block">T</span>
                     </button>
                     <div className="w-6 h-px bg-slate-700 my-1"></div>
-                    <button className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'CONVERT_BEND' ? 'bg-purple-600 text-white' : 'text-purple-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'CONVERT_BEND' })} title="Convert intersection to Bend (Select 2 pipes)">
+                    <button data-testid="drawbtn-convert-bend" className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'CONVERT_BEND' ? 'bg-purple-600 text-white' : 'text-purple-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'CONVERT_BEND' })} title="Convert intersection to Bend (Select 2 pipes)">
                         <span className="font-bold text-[10px] uppercase text-center w-full block">CB</span>
                     </button>
-                    <button className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'CONVERT_TEE' ? 'bg-purple-600 text-white' : 'text-purple-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'CONVERT_TEE' })} title="Convert intersection to Tee (Select 3 pipes)">
+                    <button data-testid="drawbtn-convert-tee" className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'CONVERT_TEE' ? 'bg-purple-600 text-white' : 'text-purple-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'CONVERT_TEE' })} title="Convert intersection to Tee (Select 3 pipes)">
                         <span className="font-bold text-[10px] uppercase text-center w-full block">CT</span>
                     </button>
-                    <button className={`w-8 h-8 rounded flex items-center justify-center text-purple-400 hover:bg-slate-700 hover:text-white`} onClick={() => {
+                    <button data-testid="drawbtn-auto-fittings" className={`w-8 h-8 rounded flex items-center justify-center text-purple-400 hover:bg-slate-700 hover:text-white`} onClick={() => {
                         import('../../engine/OverlapSolver.js').then(({ autoFittingSolver }) => {
                             const { updatedTable } = autoFittingSolver(drawnPipes);
                             dcDispatch({ type: 'SET_ALL_COMPONENTS', payload: updatedTable });
@@ -1202,16 +1259,16 @@ export function DrawCanvasTab() {
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>
                     </button>
                     <div className="w-6 h-px bg-slate-700 my-1"></div>
-                    <button className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'FLANGE' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'FLANGE' })} title="Flange">
+                    <button data-testid="drawbtn-flange" className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'FLANGE' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'FLANGE' })} title="Flange">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
                     </button>
-                    <button className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'VALVE' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'VALVE' })} title="Valve">
+                    <button data-testid="drawbtn-valve" className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'VALVE' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'VALVE' })} title="Valve">
                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="3 3 21 21 21 3 3 21"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
                     </button>
-                    <button className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'REDUCER' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'REDUCER' })} title="Reducer">
+                    <button data-testid="drawbtn-reducer" className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'REDUCER' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'REDUCER' })} title="Reducer">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="3 4 21 8 21 16 3 20 3 4"/></svg>
                     </button>
-                    <button className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'SUPPORT' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'SUPPORT' })} title="Support">
+                    <button data-testid="drawbtn-support" className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'SUPPORT' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'SUPPORT' })} title="Support">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22V12"/><path d="m5 12 7-7 7 7"/></svg>
                     </button>
                     <div className="w-6 h-px bg-slate-700 my-1"></div>
@@ -1220,7 +1277,7 @@ export function DrawCanvasTab() {
                     // This tool also exists in src/ui/tabs/CanvasTab.jsx.
                     // If modifying logic, update BOTH files and run Checkpoint F.
                     // ═══════════════════════════════════════════════════════════════ */}
-                    <button className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'CONNECT' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'CONNECT' })} title="Connect Elements">
+                    <button data-testid="drawbtn-connect" className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'CONNECT' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'CONNECT' })} title="Connect Elements">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                     </button>
                     {/* ═══════════════════════════════════════════════════════════════
@@ -1228,7 +1285,7 @@ export function DrawCanvasTab() {
                     // This tool also exists in src/ui/tabs/CanvasTab.jsx.
                     // If modifying logic, update BOTH files and run Checkpoint F.
                     // ═══════════════════════════════════════════════════════════════ */}
-                    <button className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'STRETCH' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'STRETCH' })} title="Stretch Element">
+                    <button data-testid="drawbtn-stretch" className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'STRETCH' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'STRETCH' })} title="Stretch Element">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></svg>
                     </button>
                     {/* ═══════════════════════════════════════════════════════════════
@@ -1236,7 +1293,7 @@ export function DrawCanvasTab() {
                     // This tool also exists in src/ui/tabs/CanvasTab.jsx.
                     // If modifying logic, update BOTH files and run Checkpoint F.
                     // ═══════════════════════════════════════════════════════════════ */}
-                    <button className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'BREAK' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'BREAK' })} title="Break Element">
+                    <button data-testid="drawbtn-break" className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'BREAK' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'BREAK' })} title="Break Element">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></svg>
                     </button>
                     {/* ═══════════════════════════════════════════════════════════════
@@ -1244,7 +1301,7 @@ export function DrawCanvasTab() {
                     // This tool also exists in src/ui/tabs/CanvasTab.jsx.
                     // If modifying logic, update BOTH files and run Checkpoint F.
                     // ═══════════════════════════════════════════════════════════════ */}
-                    <button className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'MEASURE' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'MEASURE' })} title="Measure Distance">
+                    <button data-testid="drawbtn-measure" className={`w-8 h-8 rounded flex items-center justify-center ${activeTool === 'MEASURE' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`} onClick={() => dcDispatch({ type: 'SET_TOOL', payload: 'MEASURE' })} title="Measure Distance">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="20" height="8" x="2" y="8" rx="2" ry="2"/><path d="M6 8v4"/><path d="M10 8v4"/><path d="M14 8v4"/><path d="M18 8v4"/></svg>
                     </button>
                     <div className="w-6 h-px bg-slate-700 my-1"></div>
@@ -1326,55 +1383,80 @@ export function DrawCanvasTab() {
                 </div>
 
                 {/* Right Properties Panel (300px) */}
-                {isPanelOpen && (
-                    <div className="w-[300px] bg-slate-900 border-l border-slate-700 flex flex-col z-10 shrink-0">
-                        <div className="flex justify-between items-center p-3 border-b border-slate-700 bg-slate-800">
-                            <span className="font-bold text-xs text-slate-200">PROPERTIES</span>
-                            <button onClick={() => setIsPanelOpen(false)} className="text-slate-400 hover:text-white">✕</button>
+                {isPanelOpen && (() => {
+                    function getPanelMode() {
+                        if (activeTool && ['BREAK', 'MEASURE', 'CONNECT', 'STRETCH'].includes(activeTool)) return 'READ_ONLY';
+                        if (state.multiSelectedIndices?.length > 1) return 'MULTI_RESTRICTED';
+                        if (selectedIndex === null) return 'HIDDEN';
+                        return 'SINGLE_EDIT';
+                    }
+                    const panelMode = getPanelMode();
+
+                    return (
+                        <div className="w-[300px] bg-slate-900 border-l border-slate-700 flex flex-col z-10 shrink-0">
+                            <div className="flex justify-between items-center p-3 border-b border-slate-700 bg-slate-800">
+                                <span className="font-bold text-xs text-slate-200">PROPERTIES</span>
+                                <button onClick={() => setIsPanelOpen(false)} className="text-slate-400 hover:text-white">✕</button>
+                            </div>
+                            <div className="p-4 flex flex-col gap-4 overflow-y-auto">
+                                {panelMode === 'HIDDEN' && (
+                                    <div className="text-slate-400 text-sm italic text-center">Select a single component to edit properties.</div>
+                                )}
+                                {panelMode === 'MULTI_RESTRICTED' && (
+                                    <div className="text-purple-400 text-sm font-bold text-center bg-purple-900/30 p-2 rounded border border-purple-800/50">Multiple items selected. Bulk edit not supported in Draw Canvas.</div>
+                                )}
+                                {panelMode === 'READ_ONLY' && selectedIndex !== null && (
+                                    <div className="text-amber-400 text-sm italic text-center mb-2">Properties are read-only while using destructive tools ({activeTool}).</div>
+                                )}
+                                {(panelMode === 'SINGLE_EDIT' || (panelMode === 'READ_ONLY' && selectedIndex !== null)) && (
+                                    <>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-xs text-slate-500 uppercase">Length (mm)</label>
+                                            <input
+                                                type="text"
+                                                className="bg-slate-950 border border-slate-700 rounded p-1 text-sm text-slate-200 outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                value={drawnPipes[selectedIndex].ep1 && drawnPipes[selectedIndex].ep2 ? new THREE.Vector3(drawnPipes[selectedIndex].ep1.x, drawnPipes[selectedIndex].ep1.y, drawnPipes[selectedIndex].ep1.z).distanceTo(new THREE.Vector3(drawnPipes[selectedIndex].ep2.x, drawnPipes[selectedIndex].ep2.y, drawnPipes[selectedIndex].ep2.z)).toFixed(1) : '-'}
+                                                disabled={panelMode === 'READ_ONLY'}
+                                                onChange={(e) => {
+                                                    const raw = String(e.target.value).trim();
+                                                    const newLen = Number(raw);
+                                                    if (!Number.isFinite(newLen) || newLen <= 0) return;
+
+                                                    const p = drawnPipes[selectedIndex];
+                                                    const p1 = new THREE.Vector3(p.ep1.x, p.ep1.y, p.ep1.z);
+                                                    const p2 = new THREE.Vector3(p.ep2.x, p.ep2.y, p.ep2.z);
+                                                    const dir = p2.clone().sub(p1).normalize();
+                                                    const newP2 = p1.clone().add(dir.multiplyScalar(newLen));
+                                                    dcDispatch({ type: 'UPDATE_COMPONENT', payload: { index: selectedIndex, component: { ...p, ep2: { x: newP2.x, y: newP2.y, z: newP2.z } } } });
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-xs text-slate-500 uppercase">Bore (mm)</label>
+                                            <input
+                                                type="text"
+                                                className="bg-slate-950 border border-slate-700 rounded p-1 text-sm text-slate-200 outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                value={drawnPipes[selectedIndex].bore || '-'}
+                                                disabled={panelMode === 'READ_ONLY'}
+                                                onChange={(e) => {
+                                                    const raw = String(e.target.value).trim();
+                                                    const newBore = Number(raw);
+                                                    if (!Number.isFinite(newBore) || newBore <= 0) return;
+
+                                                    dcDispatch({ type: 'UPDATE_COMPONENT', payload: { index: selectedIndex, component: { ...drawnPipes[selectedIndex], bore: newBore } } });
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-xs text-slate-500 uppercase">Schedule</label>
+                                            <input disabled={panelMode === 'READ_ONLY'} type="text" className="bg-slate-950 border border-slate-700 rounded p-1 text-sm text-slate-200 outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" value="-" onChange={() => {}} />
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
-                        <div className="p-4 flex flex-col gap-4 overflow-y-auto">
-                            {selectedIndex === null ? (
-                                <div className="text-slate-400 text-sm italic text-center">Select a component to edit its properties.</div>
-                            ) : (
-                                <>
-                                    <div className="flex flex-col gap-1">
-                                        <label className="text-xs text-slate-500 uppercase">Length (mm)</label>
-                                        <input
-                                            type="text"
-                                            className="bg-slate-950 border border-slate-700 rounded p-1 text-sm text-slate-200 outline-none focus:border-blue-500"
-                                            value={drawnPipes[selectedIndex].ep1 && drawnPipes[selectedIndex].ep2 ? new THREE.Vector3(drawnPipes[selectedIndex].ep1.x, drawnPipes[selectedIndex].ep1.y, drawnPipes[selectedIndex].ep1.z).distanceTo(new THREE.Vector3(drawnPipes[selectedIndex].ep2.x, drawnPipes[selectedIndex].ep2.y, drawnPipes[selectedIndex].ep2.z)).toFixed(1) : '-'}
-                                            onChange={(e) => {
-                                                const newLen = parseFloat(e.target.value) || 0;
-                                                const p = drawnPipes[selectedIndex];
-                                                const p1 = new THREE.Vector3(p.ep1.x, p.ep1.y, p.ep1.z);
-                                                const p2 = new THREE.Vector3(p.ep2.x, p.ep2.y, p.ep2.z);
-                                                const dir = p2.clone().sub(p1).normalize();
-                                                const newP2 = p1.clone().add(dir.multiplyScalar(newLen));
-                                                dcDispatch({ type: 'UPDATE_COMPONENT', payload: { index: selectedIndex, component: { ...p, ep2: { x: newP2.x, y: newP2.y, z: newP2.z } } } });
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <label className="text-xs text-slate-500 uppercase">Bore (mm)</label>
-                                        <input
-                                            type="text"
-                                            className="bg-slate-950 border border-slate-700 rounded p-1 text-sm text-slate-200 outline-none focus:border-blue-500"
-                                            value={drawnPipes[selectedIndex].bore || '-'}
-                                            onChange={(e) => {
-                                                const newBore = parseFloat(e.target.value) || 0;
-                                                dcDispatch({ type: 'UPDATE_COMPONENT', payload: { index: selectedIndex, component: { ...drawnPipes[selectedIndex], bore: newBore } } });
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <label className="text-xs text-slate-500 uppercase">Schedule</label>
-                                        <input type="text" className="bg-slate-950 border border-slate-700 rounded p-1 text-sm text-slate-200 outline-none focus:border-blue-500" value="-" onChange={() => {}} />
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                )}
+                    );
+                })()}
                 {!isPanelOpen && (
                     <button onClick={() => setIsPanelOpen(true)} className="absolute right-0 top-1/2 bg-slate-800 text-slate-400 border border-r-0 border-slate-700 p-1 rounded-l z-20 hover:text-white hover:bg-slate-700">
                         ◀

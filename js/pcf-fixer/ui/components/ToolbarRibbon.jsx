@@ -38,7 +38,7 @@ const ToolBtn = ({ active, onClick, title, children, color = 'slate' }) => {
         indigo: active ? "bg-indigo-600 text-white shadow-inner" : "text-indigo-500 hover:bg-indigo-900/50 hover:text-indigo-400",
     };
     return (
-        <button onClick={onClick} className={`${base} ${colors[color]}`} title={title}>
+        <button onClick={onClick} className={`${base} ${colors[color]}`} title={title} data-testid={`toolbtn-${title.replace(/[^a-zA-Z]/g, '').toLowerCase()}`}>
             {children}
         </button>
     );

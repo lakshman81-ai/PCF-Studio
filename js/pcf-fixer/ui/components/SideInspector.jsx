@@ -16,12 +16,12 @@ export const SideInspector = () => {
   const [isChanged, setIsChanged] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const activeIds = multiSelectedIds.length > 0 ? multiSelectedIds : (selectedElementId ? [selectedElementId] : []);
-  const isMulti = activeIds.length > 1;
+  const activeIds = (multiSelectedIds || []).length > 0 ? multiSelectedIds : (selectedElementId ? [selectedElementId] : []);
+  const isMulti = (activeIds || []).length > 1;
 
   useEffect(() => {
-    if (activeIds.length > 0 && showSideInspector) {
-      const elements = activeIds.map(id => dataTable.find(r => r._rowIndex === id)).filter(Boolean);
+    if ((activeIds || []).length > 0 && showSideInspector) {
+      const elements = (activeIds || []).map(id => dataTable.find(r => r._rowIndex === id)).filter(Boolean);
 
       if (elements.length === 0 || elements.every(el => el.type === 'SUPPORT')) {
           setFormData(null);
@@ -165,23 +165,30 @@ export const SideInspector = () => {
       clearMultiSelect();
   };
 
-  if (!showSideInspector || !formData) return null;
+  // Formalized State Machine states: 'HIDDEN', 'SINGLE', 'MULTI'
+  const panelState = React.useMemo(() => {
+      if (!showSideInspector || !formData) return 'HIDDEN';
+      if (formData._isMulti) return 'MULTI';
+      return 'SINGLE';
+  }, [showSideInspector, formData]);
+
+  if (panelState === 'HIDDEN') return null;
 
   return (
-    <div className="w-72 bg-slate-900 border border-slate-700 shadow-2xl rounded-lg overflow-hidden flex flex-col max-h-[calc(100vh-10rem)] shrink-0">
+    <div data-testid="side-inspector-panel" data-panel-state={panelState} className="w-72 bg-slate-900 border border-slate-700 shadow-2xl rounded-lg overflow-hidden flex flex-col max-h-[calc(100vh-10rem)] shrink-0">
       {/* Header */}
       <div className="flex justify-between items-center bg-slate-800 p-3 border-b border-slate-700">
         <div className="flex items-center gap-2">
-          <button onClick={() => setIsCollapsed(!isCollapsed)} className="text-red-500 hover:text-red-400 text-xs">
+          <button data-testid="side-inspector-toggle" onClick={() => setIsCollapsed(!isCollapsed)} className="text-red-500 hover:text-red-400 text-xs">
             {isCollapsed ? '▶' : '▼'}
           </button>
-          {isMulti ? (
+          {formData._isMulti ? (
               <span className="text-xs font-bold text-slate-100 bg-purple-600 px-2 py-0.5 rounded uppercase">MULTI-EDIT</span>
           ) : (
               <span className="text-xs font-bold text-slate-100 bg-blue-600 px-2 py-0.5 rounded uppercase">{formData.type}</span>
           )}
           <span className="text-slate-400 text-xs">
-              {isMulti ? `${formData._rowIndices.length} Items` : `Row ${formData._rowIndex}`}
+              {formData._isMulti ? `${formData._rowIndices?.length || 0} Items` : `Row ${formData._rowIndex}`}
           </span>
         </div>
         <button onClick={handleClose} className="text-slate-400 hover:text-white" title="Deselect">
@@ -206,27 +213,27 @@ export const SideInspector = () => {
         {/* Attributes */}
         <div className="space-y-2">
           <h3 className="text-slate-300 text-sm font-semibold border-b border-slate-700 pb-1">
-              {isMulti ? 'Common Attributes' : 'Attributes'}
+              {formData._isMulti ? 'Common Attributes' : 'Attributes'}
           </h3>
           <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col gap-1">
               <label className="text-xs text-slate-400">Bore</label>
-              <input type="number" value={formData.bore} onChange={(e) => handleChange('bore', null, e.target.value)} placeholder={isMulti ? 'Multiple values...' : ''} className="bg-slate-950 text-slate-200 text-xs p-1 rounded border border-slate-700" />
+              <input type="number" value={formData.bore} onChange={(e) => handleChange('bore', null, e.target.value)} placeholder={formData._isMulti ? 'Multiple values...' : ''} className="bg-slate-950 text-slate-200 text-xs p-1 rounded border border-slate-700" />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs text-slate-400">Pipeline Ref</label>
-              <input type="text" value={formData.pipelineRef} onChange={(e) => handleChange('pipelineRef', null, e.target.value)} placeholder={isMulti ? 'Multiple values...' : ''} className="bg-slate-950 text-slate-200 text-xs p-1 rounded border border-slate-700" />
+              <input type="text" value={formData.pipelineRef} onChange={(e) => handleChange('pipelineRef', null, e.target.value)} placeholder={formData._isMulti ? 'Multiple values...' : ''} className="bg-slate-950 text-slate-200 text-xs p-1 rounded border border-slate-700" />
             </div>
             {['skey', 'PIPING_CLASS', 'RATING', 'LINENO_KEY'].map(attr => (
               <div key={attr} className="flex flex-col gap-1">
                 <label className="text-xs text-slate-400 truncate" title={attr}>{attr}</label>
-                <input type="text" value={formData[attr]} onChange={(e) => handleChange(attr, null, e.target.value)} placeholder={isMulti ? 'Multiple values...' : ''} className="bg-slate-950 text-slate-200 text-xs p-1 rounded border border-slate-700" />
+                <input type="text" value={formData[attr]} onChange={(e) => handleChange(attr, null, e.target.value)} placeholder={formData._isMulti ? 'Multiple values...' : ''} className="bg-slate-950 text-slate-200 text-xs p-1 rounded border border-slate-700" />
               </div>
             ))}
             {['CA97', 'CA98', 'CA1', 'CA2', 'CA3', 'CA4', 'CA5', 'CA6', 'CA7', 'CA8', 'CA9', 'CA10'].map(attr => (
               <div key={attr} className="flex flex-col gap-1">
                 <label className="text-xs text-slate-400">{attr}</label>
-                <input type="text" value={formData[attr]} onChange={(e) => handleChange(attr, null, e.target.value)} placeholder={isMulti ? 'Multiple values...' : ''} className="bg-slate-950 text-slate-200 text-xs p-1 rounded border border-slate-700" />
+                <input type="text" value={formData[attr]} onChange={(e) => handleChange(attr, null, e.target.value)} placeholder={formData._isMulti ? 'Multiple values...' : ''} className="bg-slate-950 text-slate-200 text-xs p-1 rounded border border-slate-700" />
               </div>
             ))}
           </div>

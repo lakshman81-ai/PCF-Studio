@@ -15,18 +15,24 @@ export const SupportPropertyPanel = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Consider both multi-selected supports or a single selected support
-  const activeIds = multiSelectedIds.length > 0 ? multiSelectedIds : (selectedElementId ? [selectedElementId] : []);
+  const activeIds = (multiSelectedIds || []).length > 0 ? multiSelectedIds : (selectedElementId ? [selectedElementId] : []);
 
-  const selectedSupports = activeIds.filter(id => {
+  const selectedSupports = (activeIds || []).filter(id => {
     const row = dataTable.find(r => r._rowIndex === id);
     return row && (row.type || '').toUpperCase() === 'SUPPORT';
   });
 
   const showSideInspector = useStore(state => state.showSideInspector);
-  const isVisible = showSideInspector && activeIds.length > 0 && selectedSupports.length === activeIds.length;
+
+  // Formalized State Machine states: 'HIDDEN', 'SINGLE', 'MULTI'
+  const panelState = React.useMemo(() => {
+      const isVisible = showSideInspector && (activeIds || []).length > 0 && selectedSupports.length === activeIds.length;
+      if (!isVisible) return 'HIDDEN';
+      return selectedSupports.length > 1 ? 'MULTI' : 'SINGLE';
+  }, [showSideInspector, activeIds, selectedSupports.length]);
 
   useEffect(() => {
-    if (isVisible && selectedSupports.length > 0) {
+    if (panelState !== 'HIDDEN' && selectedSupports.length > 0) {
       const firstSupport = dataTable.find(r => r._rowIndex === selectedSupports[0]);
       if (firstSupport) {
         setAttrs({
@@ -35,7 +41,7 @@ export const SupportPropertyPanel = () => {
         });
       }
     }
-  }, [isVisible, selectedSupports, dataTable]);
+  }, [panelState, selectedSupports, dataTable]);
 
   const handleApply = () => {
     pushHistory('Support Attr Edit');
@@ -91,13 +97,13 @@ export const SupportPropertyPanel = () => {
     if (selectedElementId) setSelected(null);
   }
 
-  if (!isVisible) return null;
+  if (panelState === 'HIDDEN') return null;
 
   return (
-    <div className="w-72 bg-slate-900 border border-slate-700 shadow-2xl rounded-lg overflow-hidden flex flex-col transition-all shrink-0" onPointerDown={(e) => e.stopPropagation()}>
+    <div data-testid="support-property-panel" data-panel-state={panelState} className="w-72 bg-slate-900 border border-slate-700 shadow-2xl rounded-lg overflow-hidden flex flex-col transition-all shrink-0" onPointerDown={(e) => e.stopPropagation()}>
       <div className="bg-slate-800 p-3 border-b border-slate-700 flex justify-between items-center">
         <div className="flex items-center gap-2">
-            <button onClick={() => setIsCollapsed(!isCollapsed)} className="text-red-500 hover:text-red-400 text-xs">
+            <button data-testid="support-panel-toggle" onClick={() => setIsCollapsed(!isCollapsed)} className="text-red-500 hover:text-red-400 text-xs">
               {isCollapsed ? '▶' : '▼'}
             </button>
             <span className="text-slate-200 font-bold text-sm">{selectedSupports.length} Supports Selected</span>

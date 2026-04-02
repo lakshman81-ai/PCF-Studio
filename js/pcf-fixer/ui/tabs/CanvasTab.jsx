@@ -394,24 +394,28 @@ const ImmutableComponents = () => {
 
           e.stopPropagation();
 
-          if (e.button === 2) {
-              const nx = e.nativeEvent?.clientX ?? e.clientX;
-              const ny = e.nativeEvent?.clientY ?? e.clientY;
-              useStore.getState().setContextMenu({
-                  x: nx,
-                  y: ny,
-                  rowIndex: el._rowIndex
-              });
-              return;
-          }
+          try {
+              if (e.button === 2) {
+                  const nx = e.nativeEvent?.clientX ?? e.clientX;
+                  const ny = e.nativeEvent?.clientY ?? e.clientY;
+                  useStore.getState().setContextMenu({
+                      x: nx,
+                      y: ny,
+                      rowIndex: el._rowIndex
+                  });
+                  return;
+              }
 
-          const isMultiSelect = e.ctrlKey || e.metaKey;
-          if (isMultiSelect) {
-              useStore.getState().toggleMultiSelect(el._rowIndex);
-          } else {
-              useStore.getState().clearMultiSelect();
-              useStore.getState().setSelected(el._rowIndex);
-              useStore.getState().setMultiSelect([el._rowIndex]);
+              const isMultiSelect = e.ctrlKey || e.metaKey;
+              if (isMultiSelect) {
+                  useStore.getState().toggleMultiSelect(el._rowIndex);
+              } else {
+                  useStore.getState().clearMultiSelect();
+                  useStore.getState().setSelected(el._rowIndex);
+                  useStore.getState().setMultiSelect([el._rowIndex]);
+              }
+          } catch (err) {
+              dbg.error('IMM_SELECT', 'Fatal error during component selection', { error: err.message, rowIndex: el._rowIndex });
           }
         };
 
@@ -748,8 +752,8 @@ const ProposalOverlay = ({ proposal }) => {
 // ----------------------------------------------------
 const SingleIssuePanel = ({ proposals, validationIssues, currentIssueIndex, setCurrentIssueIndex, onAutoCenter, onApprove, onReject }) => {
     const allIssues = [
-        ...validationIssues.map(i => ({ type: 'validation', data: i })),
-        ...proposals.map(p => ({ type: 'proposal', data: p }))
+        ...(validationIssues || []).map(i => ({ type: 'validation', data: i })),
+        ...(proposals || []).map(p => ({ type: 'proposal', data: p }))
     ];
 
     const safeIndex = Math.max(0, Math.min(currentIssueIndex, allIssues.length - 1));
@@ -1207,84 +1211,88 @@ const MarqueeLayer = () => {
             }
         }
 
-        // Calculate drag distance
-        const dragDist = Math.sqrt(
-            Math.pow(currentPos.x - startPos.x, 2) +
-            Math.pow(currentPos.y - startPos.y, 2)
-        );
+        try {
+            // Calculate drag distance
+            const dragDist = Math.sqrt(
+                Math.pow(currentPos.x - startPos.x, 2) +
+                Math.pow(currentPos.y - startPos.y, 2)
+            );
 
-        if (dragDist < MIN_DRAG_DISTANCE) {
-            setCanvasMode('VIEW');
-            return;
-        }
+            if (dragDist < MIN_DRAG_DISTANCE) {
+                setCanvasMode('VIEW');
+                return;
+            }
 
-        const rectScreen = {
-            left: Math.min(startPos.x, currentPos.x),
-            right: Math.max(startPos.x, currentPos.x),
-            top: Math.min(startPos.y, currentPos.y),
-            bottom: Math.max(startPos.y, currentPos.y)
-        };
+            const rectScreen = {
+                left: Math.min(startPos.x, currentPos.x),
+                right: Math.max(startPos.x, currentPos.x),
+                top: Math.min(startPos.y, currentPos.y),
+                bottom: Math.max(startPos.y, currentPos.y)
+            };
 
-        const selected = dataTable.filter(el => {
-            if (useStore.getState().hiddenElementIds.includes(el._rowIndex)) return false;
-            return isComponentInMarquee(el, rectScreen);
-        });
-
-        if (canvasMode === 'MARQUEE_SELECT') {
-            setMultiSelect(selected.map(e => e._rowIndex));
-        } else if (canvasMode === 'MARQUEE_ZOOM') {
-            // Calculate bounding box of selected elements
-            let minX = Infinity, minY = Infinity, minZ = Infinity;
-            let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
-            const pts = [];
-            selected.forEach(el => {
-                if (el.ep1) pts.push(el.ep1);
-                if (el.ep2) pts.push(el.ep2);
-                if (el.cp) pts.push(el.cp);
+            const selected = dataTable.filter(el => {
+                if (useStore.getState().hiddenElementIds.includes(el._rowIndex)) return false;
+                return isComponentInMarquee(el, rectScreen);
             });
-            // If no elements selected, use the drag rectangle center as zoom target
-            if (pts.length === 0) {
-                // Unproject the center of the rectangle to world space
-                const canvasRect = document.querySelector('canvas')?.getBoundingClientRect();
-                const canvasOffsetLeft = canvasRect ? canvasRect.left : 0;
-                const canvasOffsetTop = canvasRect ? canvasRect.top : 0;
-                const cx = ((rectScreen.left + rectScreen.right) / 2 - canvasOffsetLeft) / size.width * 2 - 1;
-                const cy = -((rectScreen.top + rectScreen.bottom) / 2 - canvasOffsetTop) / size.height * 2 + 1;
-                const worldPt = new THREE.Vector3(cx, cy, 0.5).unproject(camera);
-                dbg.tool('MARQUEE_ZOOM', 'No elements in rect — zooming to center', { cx, cy });
-                window.dispatchEvent(new CustomEvent('canvas-focus-point', {
-                    detail: { x: worldPt.x, y: worldPt.y, z: worldPt.z, dist: 3000 }
-                }));
-            } else {
-                pts.forEach(p => {
-                    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
-                    minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
-                    minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z);
-                });
-                const center = {
-                    x: (minX + maxX) / 2,
-                    y: (minY + maxY) / 2,
-                    z: (minZ + maxZ) / 2
-                };
-                const extent = Math.max(maxX - minX, maxY - minY, maxZ - minZ, 500);
-                dbg.tool('MARQUEE_ZOOM', `Zooming to ${selected.length} elements`, {
-                    center, extent, elementCount: selected.length
-                });
-                window.dispatchEvent(new CustomEvent('canvas-focus-point', {
-                    detail: { ...center, dist: extent * 1.5 }
-                }));
-            }
-            // NOTE: Do NOT call setMultiSelect — zoom is a view operation, not selection
-        } else if (canvasMode === 'MARQUEE_DELETE' && selected.length > 0) {
-            if (window.confirm(`Delete ${selected.length} elements?`)) {
-                pushHistory('Delete via Marquee');
-                const rowIndices = selected.map(e => e._rowIndex);
-                dispatch({ type: 'DELETE_ELEMENTS', payload: { rowIndices } });
 
-                const updatedTable = useStore.getState().dataTable.filter(r => !rowIndices.includes(r._rowIndex));
-                useStore.getState().setDataTable(updatedTable);
-                dispatch({ type: "ADD_LOG", payload: { stage: "INTERACTIVE", type: "Applied/Fix", message: `Deleted ${selected.length} elements via marquee.` } });
+            if (canvasMode === 'MARQUEE_SELECT') {
+                setMultiSelect(selected.map(e => e._rowIndex));
+            } else if (canvasMode === 'MARQUEE_ZOOM') {
+                // Calculate bounding box of selected elements
+                let minX = Infinity, minY = Infinity, minZ = Infinity;
+                let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+                const pts = [];
+                selected.forEach(el => {
+                    if (el.ep1) pts.push(el.ep1);
+                    if (el.ep2) pts.push(el.ep2);
+                    if (el.cp) pts.push(el.cp);
+                });
+                // If no elements selected, use the drag rectangle center as zoom target
+                if (pts.length === 0) {
+                    // Unproject the center of the rectangle to world space
+                    const canvasRect = document.querySelector('canvas')?.getBoundingClientRect();
+                    const canvasOffsetLeft = canvasRect ? canvasRect.left : 0;
+                    const canvasOffsetTop = canvasRect ? canvasRect.top : 0;
+                    const cx = ((rectScreen.left + rectScreen.right) / 2 - canvasOffsetLeft) / size.width * 2 - 1;
+                    const cy = -((rectScreen.top + rectScreen.bottom) / 2 - canvasOffsetTop) / size.height * 2 + 1;
+                    const worldPt = new THREE.Vector3(cx, cy, 0.5).unproject(camera);
+                    if (typeof dbg !== 'undefined') dbg.tool('MARQUEE_ZOOM', 'No elements in rect — zooming to center', { cx, cy });
+                    window.dispatchEvent(new CustomEvent('canvas-focus-point', {
+                        detail: { x: worldPt.x, y: worldPt.y, z: worldPt.z, dist: 3000 }
+                    }));
+                } else {
+                    pts.forEach(p => {
+                        minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+                        minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+                        minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z);
+                    });
+                    const center = {
+                        x: (minX + maxX) / 2,
+                        y: (minY + maxY) / 2,
+                        z: (minZ + maxZ) / 2
+                    };
+                    const extent = Math.max(maxX - minX, maxY - minY, maxZ - minZ, 500);
+                    if (typeof dbg !== 'undefined') dbg.tool('MARQUEE_ZOOM', `Zooming to ${selected.length} elements`, {
+                        center, extent, elementCount: selected.length
+                    });
+                    window.dispatchEvent(new CustomEvent('canvas-focus-point', {
+                        detail: { ...center, dist: extent * 1.5 }
+                    }));
+                }
+                // NOTE: Do NOT call setMultiSelect — zoom is a view operation, not selection
+            } else if (canvasMode === 'MARQUEE_DELETE' && selected.length > 0) {
+                if (window.confirm(`Delete ${selected.length} elements?`)) {
+                    pushHistory('Delete via Marquee');
+                    const rowIndices = selected.map(e => e._rowIndex);
+                    dispatch({ type: 'DELETE_ELEMENTS', payload: { rowIndices } });
+
+                    const updatedTable = useStore.getState().dataTable.filter(r => !rowIndices.includes(r._rowIndex));
+                    useStore.getState().setDataTable(updatedTable);
+                    dispatch({ type: "ADD_LOG", payload: { stage: "INTERACTIVE", type: "Applied/Fix", message: `Deleted ${selected.length} elements via marquee.` } });
+                }
             }
+        } catch (err) {
+            if (typeof dbg !== 'undefined') dbg.error('MARQUEE', 'Fatal error during marquee operation', { error: err.message });
         }
 
         setCanvasMode('VIEW');
@@ -1309,7 +1317,9 @@ const MarqueeLayer = () => {
             top: Math.min(startPos.y, currentPos.y),
             width: Math.abs(currentPos.x - startPos.x),
             height: Math.abs(currentPos.y - startPos.y),
-            border: `2px ${borderStyle} ${borderColor}`,
+            borderWidth: '2px',
+            borderStyle: borderStyle,
+            borderColor: borderColor,
             backgroundColor: bgColor,
             borderRadius: '2px',
             boxShadow: `0 0 12px ${borderColor}40`,
@@ -1371,7 +1381,12 @@ const MeasureTool = () => {
         // Actually, for robust measurement, relying on the global click plane is fine as long as depthWrite=false so it intercepts.
         // But since we want to snap to objects, we'll let `InstancedPipes` handle the click bubbling or use this capture plane.
         e.stopPropagation();
-        addMeasurePt(cursorSnapPoint ? cursorSnapPoint.clone() : e.point.clone());
+        try {
+            addMeasurePt(cursorSnapPoint ? cursorSnapPoint.clone() : e.point.clone());
+        } catch (err) {
+            dbg.error('MEASURE_TOOL', 'Fatal error during measure operation', { error: err.message });
+            setCanvasMode('VIEW');
+        }
     };
 
     return (
@@ -1470,34 +1485,38 @@ const BreakPipeLayer = () => {
 
         // Ensure it's a pipe
         if (pipeRow) {
+            try {
+                pushHistory('Break Pipe');
 
-            pushHistory('Break Pipe');
+                const breakPt = cursorSnapPoint ? cursorSnapPoint.clone() : e.point.clone();
+                const breakResults = breakPipeAtPoint(pipeRow, breakPt);
 
-            const breakPt = cursorSnapPoint ? cursorSnapPoint.clone() : e.point.clone();
-            const breakResults = breakPipeAtPoint(pipeRow, breakPt);
+                if (breakResults) {
+                    const [rowA, rowB] = breakResults;
 
-            if (breakResults) {
-                const [rowA, rowB] = breakResults;
+                    // Dispatch to AppContext
+                    dispatch({
+                        type: 'BREAK_PIPE',
+                        payload: { rowIndex: pipeRow._rowIndex, rowA, rowB }
+                    });
 
-                // Dispatch to AppContext
-                dispatch({
-                    type: 'BREAK_PIPE',
-                    payload: { rowIndex: pipeRow._rowIndex, rowA, rowB }
-                });
+                    // Mirror to Zustand
+                    const updatedTable = dataTable.flatMap(r =>
+                        r._rowIndex === pipeRow._rowIndex ? [rowA, rowB] : [r]
+                    ).map((r, i) => ({ ...r, _rowIndex: i + 1 })); // Re-index
 
-                // Mirror to Zustand
-                const updatedTable = dataTable.flatMap(r =>
-                    r._rowIndex === pipeRow._rowIndex ? [rowA, rowB] : [r]
-                ).map((r, i) => ({ ...r, _rowIndex: i + 1 })); // Re-index
+                    useStore.getState().setDataTable(updatedTable);
 
-                useStore.getState().setDataTable(updatedTable);
+                    dispatch({ type: "ADD_LOG", payload: { stage: "INTERACTIVE", type: "Applied/Fix", message: `Row ${pipeRow._rowIndex} broken at (${breakPt.x.toFixed(1)}, ${breakPt.y.toFixed(1)}, ${breakPt.z.toFixed(1)}).` } });
 
-                dispatch({ type: "ADD_LOG", payload: { stage: "INTERACTIVE", type: "Applied/Fix", message: `Row ${pipeRow._rowIndex} broken at (${breakPt.x.toFixed(1)}, ${breakPt.y.toFixed(1)}, ${breakPt.z.toFixed(1)}).` } });
-
-                // One-shot action
-                useStore.getState().setCanvasMode('VIEW');
-            } else {
-                dispatch({ type: "ADD_LOG", payload: { stage: "INTERACTIVE", type: "Error", message: `Cannot break pipe Row ${pipeRow._rowIndex}. Segment too short.` } });
+                    // One-shot action
+                    useStore.getState().setCanvasMode('VIEW');
+                } else {
+                    dispatch({ type: "ADD_LOG", payload: { stage: "INTERACTIVE", type: "Error", message: `Cannot break pipe Row ${pipeRow._rowIndex}. Segment too short.` } });
+                }
+            } catch (err) {
+                if (typeof dbg !== 'undefined') dbg.error('BREAK_PIPE', 'Fatal error during break operation', { error: err.message });
+                dispatch({ type: "ADD_LOG", payload: { stage: "INTERACTIVE", type: "Error", message: `Failed to break pipe: ${err.message}` } });
             }
         }
     };
@@ -1609,6 +1628,8 @@ const EndpointSnapLayer = () => {
     const handlePointerUp = (e) => {
         e.stopPropagation();
 
+        try {
+
         let nearest = null;
         let minDist = snapRadius;
 
@@ -1697,14 +1718,17 @@ const EndpointSnapLayer = () => {
                        updatedTable.push(newBridgePipe);
                     }
 
+                    // Re-index all elements sequentially
+                    const sequentialTable = updatedTable.map((r, i) => ({ ...r, _rowIndex: i + 1 }));
+
                     // Dispatch APPLY_GAP_FIX which replaces the full table in AppContext
                     dispatch({
                         type: 'APPLY_GAP_FIX',
-                        payload: { updatedTable }
+                        payload: { updatedTable: sequentialTable }
                     });
 
                     // Mirror to Zustand store
-                    useStore.getState().setDataTable(updatedTable);
+                    useStore.getState().setDataTable(sequentialTable);
 
                     dispatch({
                         type: 'ADD_LOG',
@@ -1716,6 +1740,13 @@ const EndpointSnapLayer = () => {
 
         setConnectDraft(null);
         setCanvasMode('VIEW');
+
+        } catch (err) {
+            dbg.error('ENDPOINT_SNAP', 'Fatal error during connect/stretch operation', { error: err.message });
+            dispatch({ type: 'ADD_LOG', payload: { type: 'Error', stage: 'ENDPOINT_SNAP', message: `Connect/Stretch failed: ${err.message}` } });
+            setConnectDraft(null);
+            setCanvasMode('VIEW');
+        }
     };
 
     return (
@@ -1940,35 +1971,40 @@ const InsertSupportLayer = () => {
         e.stopPropagation();
 
         if (pipeRow) {
+            try {
+                pushHistory('Insert Support');
 
-            pushHistory('Insert Support');
+                const insertPt = cursorSnapPoint ? cursorSnapPoint.clone() : e.point.clone();
+                const supportRow = insertSupportAtPipe(pipeRow, insertPt);
 
-            const insertPt = cursorSnapPoint ? cursorSnapPoint.clone() : e.point.clone();
-            const supportRow = insertSupportAtPipe(pipeRow, insertPt);
+                if (supportRow) {
+                    // Determine new index and update
+                    const newRowIndex = Math.max(...dataTable.map(r => r._rowIndex || 0)) + 1;
+                    supportRow._rowIndex = newRowIndex;
 
-            if (supportRow) {
-                // Determine new index and update
-                const newRowIndex = Math.max(...dataTable.map(r => r._rowIndex || 0)) + 1;
-                supportRow._rowIndex = newRowIndex;
+                    dispatch({
+                        type: 'INSERT_SUPPORT',
+                        payload: { afterRowIndex: pipeRow._rowIndex, supportRow }
+                    });
 
-                dispatch({
-                    type: 'INSERT_SUPPORT',
-                    payload: { afterRowIndex: pipeRow._rowIndex, supportRow }
-                });
+                    // Add right after the pipe
+                    const idx = dataTable.findIndex(r => r._rowIndex === pipeRow._rowIndex);
+                    const updatedTable = [...dataTable];
+                    updatedTable.splice(idx + 1, 0, supportRow);
+                    const reindexedTable = updatedTable.map((r, i) => ({ ...r, _rowIndex: i + 1 }));
 
-                // Add right after the pipe
-                const idx = dataTable.findIndex(r => r._rowIndex === pipeRow._rowIndex);
-                const updatedTable = [...dataTable];
-                updatedTable.splice(idx + 1, 0, supportRow);
-                const reindexedTable = updatedTable.map((r, i) => ({ ...r, _rowIndex: i + 1 }));
+                    useStore.getState().setDataTable(reindexedTable);
 
-                useStore.getState().setDataTable(reindexedTable);
+                    dispatch({ type: "ADD_LOG", payload: { stage: "INTERACTIVE", type: "Applied/Fix", message: `Inserted Support at Row ${supportRow._rowIndex}.` } });
 
-                dispatch({ type: "ADD_LOG", payload: { stage: "INTERACTIVE", type: "Applied/Fix", message: `Inserted Support at Row ${supportRow._rowIndex}.` } });
-
-                // Keep mode active to insert more, or return to VIEW?
-                // The requirements say one-shot for break, let's keep it for insert or make it one-shot.
-                // Assuming continuous insertion is helpful.
+                    // Keep mode active to insert more, or return to VIEW?
+                    // The requirements say one-shot for break, let's keep it for insert or make it one-shot.
+                    // Assuming continuous insertion is helpful.
+                }
+            } catch (err) {
+                dbg.error('INSERT_SUPPORT', 'Fatal error during support insertion', { error: err.message });
+                dispatch({ type: 'ADD_LOG', payload: { type: 'Error', stage: 'INSERT_SUPPORT', message: `Support insertion failed: ${err.message}` } });
+                setCanvasMode('VIEW');
             }
         }
     };
@@ -2465,6 +2501,8 @@ export function CanvasTab() {
   // Global Key Handler
   useEffect(() => {
       const handleKeyDown = (e) => {
+          // Ignore if this tab is not active
+          if (appState.activeTab !== 'canvas') return;
           // Ignore if typing in an input
           if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
 
@@ -2510,12 +2548,12 @@ export function CanvasTab() {
                   break;
               case 'delete':
               case 'backspace':
-                  if (multiSelectedIds.length > 0) {
-                      if (window.confirm(`Delete ${multiSelectedIds.length} elements?`)) {
+                  if ((multiSelectedIds || []).length > 0) {
+                      if (window.confirm(`Delete ${(multiSelectedIds || []).length} elements?`)) {
                           pushHistory('Delete Keyboard');
                           dispatch({ type: 'DELETE_ELEMENTS', payload: { rowIndices: multiSelectedIds } });
                           deleteElements(multiSelectedIds);
-                          dispatch({ type: "ADD_LOG", payload: { stage: "INTERACTIVE", type: "Applied/Fix", message: `Deleted ${multiSelectedIds.length} elements via keyboard.` } });
+                          dispatch({ type: "ADD_LOG", payload: { stage: "INTERACTIVE", type: "Applied/Fix", message: `Deleted ${(multiSelectedIds || []).length} elements via keyboard.` } });
                       }
                   } else if (useStore.getState().selectedElementId) {
                       const selId = useStore.getState().selectedElementId;
@@ -2633,8 +2671,8 @@ export function CanvasTab() {
       // Let's pass a function that gets the current item and triggers the focus event.
 
       const allIssues = [
-          ...validationIssues.map(i => ({ type: 'validation', data: i })),
-          ...proposals.map(p => ({ type: 'proposal', data: p }))
+          ...(validationIssues || []).map(i => ({ type: 'validation', data: i })),
+          ...(proposals || []).map(p => ({ type: 'proposal', data: p }))
       ];
       if (allIssues.length === 0) return;
       const safeIndex = Math.max(0, Math.min(currentIssueIndex, allIssues.length - 1));
@@ -2659,37 +2697,60 @@ export function CanvasTab() {
   };
 
   const executeFix6mm = () => {
-      pushHistory('Fix 6mm Gaps');
-      const { updatedTable, fixLog } = fix6mmGaps(dataTable);
-      useStore.getState().setDataTable(updatedTable);
-      dispatch({ type: 'APPLY_GAP_FIX', payload: { updatedTable } });
-      fixLog.forEach(log => dispatch({ type: "ADD_LOG", payload: log }));
-  };
-
-  const executeAutoPipelineRef = () => {
-      pushHistory('Auto Pipeline Ref');
-      const { updatedTable, fixLog } = autoAssignPipelineRefs(dataTable);
-      useStore.getState().setDataTable(updatedTable);
-      dispatch({ type: 'APPLY_GAP_FIX', payload: { updatedTable } }); // Reuses table replace action
-      fixLog.forEach(log => dispatch({ type: "ADD_LOG", payload: log }));
-  };
-
-  const executeFix25mm = () => {
-      pushHistory('Fix 25mm Gaps');
-      const { updatedTable, fixLog } = fix25mmGapsWithPipe(dataTable);
-      useStore.getState().setDataTable(updatedTable);
-      dispatch({ type: 'APPLY_GAP_FIX', payload: { updatedTable } });
-      fixLog.forEach(log => dispatch({ type: "ADD_LOG", payload: log }));
-  };
-
-  const executeOverlapSolver = () => {
-      pushHistory('Overlap Solver');
-      import('../../engine/OverlapSolver.js').then(({ resolveOverlaps }) => {
-          const { updatedTable, fixLog } = resolveOverlaps(dataTable);
+      try {
+          pushHistory('Fix 6mm Gaps');
+          const { updatedTable, fixLog } = fix6mmGaps(dataTable);
           useStore.getState().setDataTable(updatedTable);
           dispatch({ type: 'APPLY_GAP_FIX', payload: { updatedTable } });
           fixLog.forEach(log => dispatch({ type: "ADD_LOG", payload: log }));
-      });
+      } catch (err) {
+          dbg.error('ENGINE_EXEC', 'Fix 6mm Gaps crashed', { error: err.message });
+          dispatch({ type: 'ADD_LOG', payload: { type: 'Error', stage: 'ENGINE', message: `Fix 6mm failed: ${err.message}` } });
+      }
+  };
+
+  const executeAutoPipelineRef = () => {
+      try {
+          pushHistory('Auto Pipeline Ref');
+          const { updatedTable, fixLog } = autoAssignPipelineRefs(dataTable);
+          useStore.getState().setDataTable(updatedTable);
+          dispatch({ type: 'APPLY_GAP_FIX', payload: { updatedTable } }); // Reuses table replace action
+          fixLog.forEach(log => dispatch({ type: "ADD_LOG", payload: log }));
+      } catch (err) {
+          dbg.error('ENGINE_EXEC', 'Auto Pipeline Ref crashed', { error: err.message });
+          dispatch({ type: 'ADD_LOG', payload: { type: 'Error', stage: 'ENGINE', message: `Auto Pipeline Ref failed: ${err.message}` } });
+      }
+  };
+
+  const executeFix25mm = () => {
+      try {
+          pushHistory('Fix 25mm Gaps');
+          const { updatedTable, fixLog } = fix25mmGapsWithPipe(dataTable);
+          useStore.getState().setDataTable(updatedTable);
+          dispatch({ type: 'APPLY_GAP_FIX', payload: { updatedTable } });
+          fixLog.forEach(log => dispatch({ type: "ADD_LOG", payload: log }));
+      } catch (err) {
+          dbg.error('ENGINE_EXEC', 'Fix 25mm Gaps crashed', { error: err.message });
+          dispatch({ type: 'ADD_LOG', payload: { type: 'Error', stage: 'ENGINE', message: `Fix 25mm failed: ${err.message}` } });
+      }
+  };
+
+  const executeOverlapSolver = () => {
+      try {
+          pushHistory('Overlap Solver');
+          import('../../engine/OverlapSolver.js').then(({ resolveOverlaps }) => {
+              const { updatedTable, fixLog } = resolveOverlaps(dataTable);
+              useStore.getState().setDataTable(updatedTable);
+              dispatch({ type: 'APPLY_GAP_FIX', payload: { updatedTable } });
+              fixLog.forEach(log => dispatch({ type: "ADD_LOG", payload: log }));
+          }).catch(err => {
+              dbg.error('ENGINE_EXEC', 'Overlap Solver failed during execution', { error: err.message });
+              dispatch({ type: 'ADD_LOG', payload: { type: 'Error', stage: 'ENGINE', message: `Overlap Solver failed: ${err.message}` } });
+          });
+      } catch (err) {
+          dbg.error('ENGINE_EXEC', 'Overlap Solver crashed', { error: err.message });
+          dispatch({ type: 'ADD_LOG', payload: { type: 'Error', stage: 'ENGINE', message: `Overlap Solver failed: ${err.message}` } });
+      }
   };
 
   return (
@@ -2813,8 +2874,8 @@ export function CanvasTab() {
 
         {(() => {
             const allIssues = [
-                ...validationIssues.map(i => ({ type: 'validation', data: i })),
-                ...proposals.map(p => ({ type: 'proposal', data: p }))
+                ...(validationIssues || []).map(i => ({ type: 'validation', data: i })),
+                ...(proposals || []).map(p => ({ type: 'proposal', data: p }))
             ];
             const safeIndex = Math.max(0, Math.min(currentIssueIndex, allIssues.length - 1));
             const activeItem = allIssues[safeIndex];
@@ -2822,11 +2883,11 @@ export function CanvasTab() {
             return <GhostOverlay activeProposal={activeProposal} />;
         })()}
 
-        {proposals.map((prop, idx) => {
+        {(proposals || []).map((prop, idx) => {
             // Calculate global index to check if active
             const allIssues = [
-                ...validationIssues.map(i => ({ type: 'validation', data: i })),
-                ...proposals.map(p => ({ type: 'proposal', data: p }))
+                ...(validationIssues || []).map(i => ({ type: 'validation', data: i })),
+                ...(proposals || []).map(p => ({ type: 'proposal', data: p }))
             ];
             const safeIndex = Math.max(0, Math.min(currentIssueIndex, allIssues.length - 1));
             const isActive = allIssues[safeIndex]?.type === 'proposal' && allIssues[safeIndex]?.data === prop;
@@ -2842,8 +2903,8 @@ export function CanvasTab() {
 
         {(() => {
             const allIssues = [
-                ...validationIssues.map(i => ({ type: 'validation', data: i })),
-                ...proposals.map(p => ({ type: 'proposal', data: p }))
+                ...(validationIssues || []).map(i => ({ type: 'validation', data: i })),
+                ...(proposals || []).map(p => ({ type: 'proposal', data: p }))
             ];
             const safeIndex = Math.max(0, Math.min(currentIssueIndex, allIssues.length - 1));
             return <IssueMapPin activeIssue={allIssues[safeIndex]} />;

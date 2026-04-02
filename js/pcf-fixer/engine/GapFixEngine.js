@@ -62,28 +62,95 @@ export const fix6mmGaps = (dataTable) => {
 
 /**
  * fix25mmGapsWithPipe
- * Inserts a new PIPE row for 6-25mm gaps.
+ * Handles 6-25mm anomalies.
+ * If the endpoints overlap directionally, trims the pipe.
+ * If the fitting is laterally skewed (<15mm), snaps it into alignment.
+ * Otherwise, inserts a bridge pipe for true gaps.
  */
 export const fix25mmGapsWithPipe = (dataTable, refPrefix = 'GAPFIX') => {
   if (!Array.isArray(dataTable)) return { updatedTable: [], fixLog: [] };
-  let updatedTable = [];
+
+  // Clone dataTable deeply for mutation
+  let updatedTable = dataTable.map(r => ({
+      ...r,
+      ep1: r.ep1 ? { ...r.ep1 } : null,
+      ep2: r.ep2 ? { ...r.ep2 } : null
+  }));
+
   const fixLog = [];
   let insertCount = 0;
+  let trimCount = 0;
+  let snapCount = 0;
 
-  for (let i = 0; i < dataTable.length; i++) {
-    updatedTable.push({ ...dataTable[i] });
+  for (let i = 0; i < updatedTable.length - 1; i++) {
+    const elA = updatedTable[i];
+    const elB = updatedTable[i + 1];
 
-    if (i < dataTable.length - 1) {
-      const elA = dataTable[i];
-      const elB = dataTable[i + 1];
-      if (!elA.ep2 || !elB.ep1) continue;
+    if (!elA.ep1 || !elA.ep2 || !elB.ep1 || !elB.ep2) continue;
 
-      const dist = getDist(elA.ep2, elB.ep1);
-      if (dist > 6.0 && dist <= 25.0) {
+    const dist = getDist(elA.ep2, elB.ep1);
+
+    if (dist > 6.0 && dist <= 25.0) {
+
+      // Calculate directional vectors
+      const dirA = {
+          x: elA.ep2.x - elA.ep1.x,
+          y: elA.ep2.y - elA.ep1.y,
+          z: elA.ep2.z - elA.ep1.z
+      };
+      const lenA = Math.sqrt(dirA.x**2 + dirA.y**2 + dirA.z**2);
+      if (lenA === 0) continue;
+
+      const uDirA = { x: dirA.x/lenA, y: dirA.y/lenA, z: dirA.z/lenA };
+
+      const gapVec = {
+          x: elB.ep1.x - elA.ep2.x,
+          y: elB.ep1.y - elA.ep2.y,
+          z: elB.ep1.z - elA.ep2.z
+      };
+
+      // Dot product to check if the gap is along the pipe's axis or opposing it
+      const dot = (uDirA.x * gapVec.x) + (uDirA.y * gapVec.y) + (uDirA.z * gapVec.z);
+
+      // Lateral skew calculation (distance from point to line)
+      const t = dot; // Projection length along dirA
+      const projPoint = {
+          x: elA.ep2.x + uDirA.x * t,
+          y: elA.ep2.y + uDirA.y * t,
+          z: elA.ep2.z + uDirA.z * t
+      };
+      const lateralDist = getDist(elB.ep1, projPoint);
+
+      // CASE 1: Skewed Fitting (Lateral offset < 15mm, longitudinal gap is minimal)
+      if (lateralDist > 0.5 && lateralDist <= 15.0 && Math.abs(t) <= 6.0) {
+          // Snap elB's ep1 to the projected point on elA's axis
+          elB.ep1 = { ...projPoint };
+          snapCount++;
+          fixLog.push({ type: 'Applied/Fix', stage: 'ALIGN_SKEW', message: `Row ${elB._rowIndex} snapped ${lateralDist.toFixed(1)}mm to align with Row ${elA._rowIndex}.` });
+          continue; // Move to next pair
+      }
+
+      // CASE 2: Overlap (Dot product is negative, meaning elB.ep1 is "inside" elA)
+      if (dot < -6.0) {
+          // It's an overlap. Trim elA's ep2 back to elB's ep1.
+          if ((elA.type || '').toUpperCase() === 'PIPE') {
+              elA.ep2 = { ...elB.ep1 };
+              trimCount++;
+              fixLog.push({ type: 'Applied/Fix', stage: 'TRIM_OVERLAP', message: `Row ${elA._rowIndex} trimmed by ${Math.abs(dot).toFixed(1)}mm to resolve overlap with Row ${elB._rowIndex}.` });
+          } else if ((elB.type || '').toUpperCase() === 'PIPE') {
+              elB.ep1 = { ...elA.ep2 };
+              trimCount++;
+              fixLog.push({ type: 'Applied/Fix', stage: 'TRIM_OVERLAP', message: `Row ${elB._rowIndex} trimmed by ${Math.abs(dot).toFixed(1)}mm to resolve overlap with Row ${elA._rowIndex}.` });
+          }
+          continue;
+      }
+
+      // CASE 3: True Gap (Dot product is positive > 6mm)
+      if (dot > 6.0) {
         insertCount++;
         const prefix = elA.pipelineRef || refPrefix || 'GAPFIX';
         const newPipe = {
-          _rowIndex: -1, // Temporary, will be re-indexed
+          _rowIndex: elA._rowIndex + 0.5, // Will be sorted and re-indexed
           type: 'PIPE',
           ep1: { ...elA.ep2 },
           ep2: { ...elB.ep1 },
@@ -109,17 +176,18 @@ export const fix25mmGapsWithPipe = (dataTable, refPrefix = 'GAPFIX') => {
     }
   }
 
-  // IMPROVEMENT: Warn if too many gap pipes inserted.
+  // Sort by _rowIndex to integrate newly inserted pipes correctly, then re-index integers
+  updatedTable.sort((a, b) => a._rowIndex - b._rowIndex);
+  updatedTable = updatedTable.map((row, idx) => ({ ...row, _rowIndex: idx + 1 }));
+
+  // Logging summaries
   if (insertCount > 5) {
       fixLog.push({ type: 'Warning', stage: 'GAP_FIX_25MM', message: `Inserted ${insertCount} gap pipes. May indicate underlying data quality issues.` });
   }
 
-  if (insertCount === 0) {
-      fixLog.push({ type: 'Info', stage: 'GAP_FIX_25MM', message: 'No gaps 6-25mm found.' });
+  if (insertCount === 0 && trimCount === 0 && snapCount === 0) {
+      fixLog.push({ type: 'Info', stage: 'GAP_FIX_25MM', message: 'No 6-25mm anomalies found.' });
   }
-
-  // Re-index
-  updatedTable = updatedTable.map((row, idx) => ({ ...row, _rowIndex: idx + 1 }));
 
   return { updatedTable, fixLog };
 };

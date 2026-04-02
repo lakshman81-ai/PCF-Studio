@@ -25,7 +25,7 @@ export const PipelinePropertyPanel = () => {
   }, [dataTable]);
 
   const isVisible = canvasMode === 'ASSIGN_PIPELINE';
-  const targetIds = multiSelectedIds.length > 0 ? multiSelectedIds : (selectedElementId ? [selectedElementId] : []);
+  const targetIds = (multiSelectedIds || []).length > 0 ? multiSelectedIds : (selectedElementId ? [selectedElementId] : []);
 
   const handleApply = () => {
     if (!pipelineRef.trim()) return;

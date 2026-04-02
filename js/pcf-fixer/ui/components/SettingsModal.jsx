@@ -117,7 +117,7 @@ export const SettingsModal = () => {
                             <div className="text-xs text-slate-400">Show debug overlay for tool events and state changes</div>
                         </div>
                         <div className="relative">
-                            <input type="checkbox" className="sr-only" checked={appSettings.debugConsoleEnabled} onChange={(e) => updateAppSettings({ debugConsoleEnabled: e.target.checked })} />
+                            <input data-testid="settings-debug-console" type="checkbox" className="sr-only" checked={appSettings.debugConsoleEnabled} onChange={(e) => updateAppSettings({ debugConsoleEnabled: e.target.checked })} />
                             <div className={`block w-10 h-6 rounded-full transition-colors ${appSettings.debugConsoleEnabled ? 'bg-blue-600' : 'bg-slate-700'}`}></div>
                             <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${appSettings.debugConsoleEnabled ? 'translate-x-4' : ''}`}></div>
                         </div>
@@ -173,6 +173,7 @@ export const SettingsModal = () => {
                     {Object.entries(THEME_PRESETS || {}).map(([key, preset]) => (
                         <button
                             key={key}
+                            data-testid={`theme-preset-${key}`}
                             onClick={() => useStore.getState().applyTheme(key)}
                             className={`p-3 rounded-lg border-2 transition-all ${
                                 appSettings.theme === key
