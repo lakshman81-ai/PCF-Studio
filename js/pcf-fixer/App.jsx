@@ -41,6 +41,14 @@ function MainApp() {
       };
       window.addEventListener('external-data-loaded', handleExternalData);
 
+      // Late-mount recovery: if external rows were pushed before PCF Fixer mounted,
+      // consume the pending payload now so Data Table is populated.
+      if (Array.isArray(window.__pcfPendingDataTable) && window.__pcfPendingDataTable.length > 0) {
+          const pending = window.__pcfPendingDataTable;
+          window.__pcfPendingDataTable = null;
+          window.__pcfSetDataTable(pending);
+      }
+
       return () => {
           delete window.__pcfSetDataTable;
           window.removeEventListener('external-data-loaded', handleExternalData);

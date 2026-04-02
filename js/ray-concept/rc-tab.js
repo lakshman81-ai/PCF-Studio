@@ -991,6 +991,7 @@ async function runPushToDatatable(root) {
   try {
     const rows = sourceRows.map((c, i) => _mapToDatatableRow(c, i));
     const src = rcState.finalComponents.length ? 'finalComponents' : 'components(S1)';
+    window.__pcfPendingDataTable = rows;
     const delivery = [];
     if (typeof window.__pcfSetDataTable === 'function') {
       window.__pcfSetDataTable(rows);
