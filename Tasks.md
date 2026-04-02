@@ -301,3 +301,8 @@
 
 [Task 4] [Task Description]= "Show all 4 master table data in table form" "plus PCF Fixer header/canvas updates"
 [Implementation Pending/Improvements Identified for future]: Render full 1595 Table4 rows with virtualized grid for performance and add in-grid filtering/sorting.
+
+[2026-04-02 00:00 UTC] [Task 5] [Make ASME Tables and Wt Tables non-editable with master-like appearance] [Converted ASME/Wt table panel to read-only preview tables and removed edit/save controls while keeping reload behavior.] [js/ui/master-data-controller.js; js/ui/status-bar.js] [npm run build] [current-branch] [N/A]
+
+[Task 5] [Task Description]= "don't make these table editable" "Appearance similar to other masters"
+[Implementation Pending/Improvements Identified for future]: Add pagination and sticky section filters for Table 4 large dataset rendering.
