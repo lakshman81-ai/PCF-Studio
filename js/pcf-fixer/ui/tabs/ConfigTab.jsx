@@ -191,6 +191,20 @@ export function ConfigTab() {
         </div>
       </div>
 
+
+      <div className="bg-amber-50 p-4 rounded border border-amber-200 shadow-sm mb-6">
+        <h3 className="font-semibold text-amber-800 mb-3">Bore Conversion Harmonization</h3>
+        <label className="flex items-center space-x-3">
+          <input
+            type="checkbox"
+            checked={localConfig.enableBoreInchToMm === true}
+            onChange={(e) => setLocalConfig(prev => ({ ...prev, enableBoreInchToMm: e.target.checked }))}
+            className="w-4 h-4 text-blue-600 rounded border-gray-300"
+          />
+          <span className="text-sm text-slate-700">Enable Bore Inch → MM conversion</span>
+        </label>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
         {/* Core Geometry Thresholds */}

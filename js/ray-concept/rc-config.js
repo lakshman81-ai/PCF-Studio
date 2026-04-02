@@ -4,6 +4,8 @@
  * 100% independent — zero imports from main app.
  */
 
+import { getOletBrlen, getTeeBrlen } from '../services/fallbackcontract.js';
+
 const _defaults = {
 
   // ── Stage 1: Parsing ──────────────────────────────────────────────────────
@@ -52,6 +54,7 @@ const _defaults = {
 
   // Default piping class for 2D CSV when none is resolved from data
   defaultPipingClass: 'CA150',
+  enableBoreInchToMm: false,
 
   // ── PCF Fixer datatable mapping (Final 2D CSV field → dataTable field) ─────
   // Reference documentation for the Push to Datatable feature.
@@ -98,14 +101,14 @@ const _defaults = {
   // Support mapping — controls <SUPPORT_NAME> and <SUPPORT_GUID> derivation
   supportMapping: {
     guidPrefix:   'UCI:',   // mandatory GUID prefix; cannot be blank
-    fallbackName: 'RST',    // used when no block matches
+    fallbackName: 'CA150',  // used when no block matches
     blocks: [
-      // Block 1: Friction = empty/0.3  AND  Gap = empty  →  ANC (Anchor)
-      { id: 1, frictionMatch: ['', '0.3'], gapCondition: 'empty', name: 'ANC', desc: 'Anchor' },
-      // Block 2: Friction = 0.15  (any gap)              →  GDE (Guide)
-      { id: 2, frictionMatch: ['0.15'],    gapCondition: 'any',   name: 'GDE', desc: 'Guide' },
-      // Block 3: Friction = 0.3   AND  Gap > 0            →  RST (Restraint with Gap)
-      { id: 3, frictionMatch: ['0.3'],     gapCondition: '>0',    name: 'RST', desc: 'Restraint with Gap' }
+      // Block 1: Friction = empty/0.3  AND  Gap = empty  →  CA150 (rest)
+      { id: 1, frictionMatch: ['', '0.3'], gapCondition: 'empty', name: 'CA150', desc: 'Rest / Anchor' },
+      // Block 2: Friction = 0.15  (any gap)              →  CA100 (guide)
+      { id: 2, frictionMatch: ['0.15'],    gapCondition: 'any',   name: 'CA100', desc: 'Guide' },
+      // Block 3: Friction = 0.3   AND  Gap > 0            →  CA150 (rest with gap)
+      { id: 3, frictionMatch: ['0.3'],     gapCondition: '>0',    name: 'CA150', desc: 'Rest with Gap' }
     ]
   },
 
@@ -310,11 +313,12 @@ export function ptEq(a, b, tol = 1e-3) {
 
 /** Look up BRLEN for a TEE (equal or reducing). */
 export function lookupTeeBreln(headerBore, branchBore, cfg) {
-  // Equal tee
+  const fromService = getTeeBrlen(headerBore, branchBore);
+  if (fromService != null) return fromService;
+
   if (Math.abs(headerBore - branchBore) < 1e-3) {
     return cfg.equalTeeTable[headerBore] ?? null;
   }
-  // Reducing tee
   const row = cfg.reducingTeeTable.find(
     r => Math.abs(r.h - headerBore) < 1e-3 && Math.abs(r.b - branchBore) < 1e-3
   );
@@ -323,6 +327,9 @@ export function lookupTeeBreln(headerBore, branchBore, cfg) {
 
 /** Compute BRLEN for an OLET using formula A + 0.5 * headerOD. */
 export function lookupOletBrlen(headerBore, branchBore, cfg) {
+  const fromService = getOletBrlen(headerBore, branchBore);
+  if (fromService != null) return fromService;
+
   const row = cfg.weldoletTable.find(
     r => Math.abs(r.h - headerBore) < 1e-3 && Math.abs(r.b - branchBore) < 1e-3
   );

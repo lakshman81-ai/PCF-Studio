@@ -340,14 +340,26 @@ export class TableDataBuilder {
         let weight = gAttrs['COMPONENT-ATTRIBUTE8'];
 
         if (!weight || weight === "" || weight === "0" || weight === "0 KG") {
-            const wComp = { type, bore: dn, attributes: { ...gAttrs, "PIPING-CLASS": pipingClass }, eps: [] };
-            if (group.pts && group.pts['1']) wComp.eps.push({ x: group.pts['1'].E, y: group.pts['1'].N, z: group.pts['1'].U });
-            if (group.pts && group.pts['2']) wComp.eps.push({ x: group.pts['2'].E, y: group.pts['2'].N, z: group.pts['2'].U });
-            if (len) wComp.length = len;
+            const resolved = resolveWeightForCa8({
+                type,
+                directWeight: weight,
+                boreMm: dn,
+                ratingClass: detectRating(pipingClass),
+                valveType: rigidType
+            }, { includeApprovedFittings: true });
+            if (resolved.weight != null) {
+                weight = `${resolved.weight.toFixed(2)} KG`;
+                gAttrs['CA8_TRACE'] = resolved.trace.join(' > ');
+            } else {
+                const wComp = { type, bore: dn, attributes: { ...gAttrs, "PIPING-CLASS": pipingClass }, eps: [] };
+                if (group.pts && group.pts['1']) wComp.eps.push({ x: group.pts['1'].E, y: group.pts['1'].N, z: group.pts['1'].U });
+                if (group.pts && group.pts['2']) wComp.eps.push({ x: group.pts['2'].E, y: group.pts['2'].N, z: group.pts['2'].U });
+                if (len) wComp.length = len;
 
-            const calcW = weightService.calculateWeight(wComp, linelistRow);
-            if (calcW !== null && calcW > 0) weight = calcW.toFixed(2) + " KG";
-            else weight = rigidResult.weight || weight || "";
+                const calcW = weightService.calculateWeight(wComp, linelistRow);
+                if (calcW !== null && calcW > 0) weight = calcW.toFixed(2) + " KG";
+                else weight = rigidResult.weight || weight || "";
+            }
         }
 
         // Rating (derived from piping class)

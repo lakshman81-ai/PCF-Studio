@@ -28,24 +28,6 @@
 </head>
 <body>
 
-  <!-- ── App Header ─────────────────────────────────────────────── -->
-  <header id="app-header">
-    <div class="app-title">
-      <!-- PCF Studio logo: 4-way pipe cross-section (junction viewed end-on) -->
-      <svg class="logo-mark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <rect width="24" height="24" rx="5" fill="#0f1a14"/>
-        <rect x="2"  y="10" width="20" height="4" rx="2" fill="#f59e0b"/>
-        <rect x="10" y="2"  width="4"  height="20" rx="2" fill="#f59e0b"/>
-        <circle cx="12" cy="12" r="3.2" fill="#0f1a14"/>
-        <circle cx="12" cy="12" r="3.2" fill="none" stroke="#f59e0b" stroke-width="1.6"/>
-      </svg>
-      <h1>PCF Studio</h1>
-    </div>
-    <div class="header-actions">
-      <button class="btn btn-secondary btn-sm" id="btn-theme-toggle" title="Switch Theme"></button>
-    </div>
-  </header>
-
   <!-- ── Tab Navigation ─────────────────────────────────────────── -->
   <nav id="tab-nav" role="tablist">
     <!-- CSV→PCF: pipeline flow — source nodes connected by directed arrow -->
@@ -79,6 +61,22 @@
       PCF Fixer
     </button>
   </nav>
+  <div id="app-header" style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0.8rem;border-bottom:1px solid var(--steel);background:var(--bg-panel);">
+    <div class="app-title">
+      <!-- PCF Studio logo: 4-way pipe cross-section (junction viewed end-on) -->
+      <svg class="logo-mark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect width="24" height="24" rx="5" fill="#0f1a14"/>
+        <rect x="2"  y="10" width="20" height="4" rx="2" fill="#f59e0b"/>
+        <rect x="10" y="2"  width="4"  height="20" rx="2" fill="#f59e0b"/>
+        <circle cx="12" cy="12" r="3.2" fill="#0f1a14"/>
+        <circle cx="12" cy="12" r="3.2" fill="none" stroke="#f59e0b" stroke-width="1.6"/>
+      </svg>
+      <h1>PCF Studio</h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary btn-sm" id="btn-theme-toggle" title="Switch Theme"></button>
+    </div>
+  </div>
 
   <!-- ── Main Content ───────────────────────────────────────────── -->
   <main id="app-main">

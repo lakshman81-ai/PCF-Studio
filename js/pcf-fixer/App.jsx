@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Header } from './ui/components/Header';
 import { StatusBar } from './ui/components/StatusBar';
 import { DataTableTab } from './ui/tabs/DataTableTab';
 import { CoreProcessorTab } from './ui/tabs/CoreProcessorTab';
@@ -50,9 +49,7 @@ function MainApp() {
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans flex flex-col pb-12">
-      <Header />
-
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
+      <main className={`flex-1 w-full max-w-none ${activeTab === 'canvas' ? 'px-1 py-2' : 'px-3 py-4'}`}>
 
         {/* Tab Navigation */}
         <div className="flex space-x-1 border-b border-slate-300 mb-6">
@@ -90,13 +87,13 @@ function MainApp() {
         </div>
 
         {/* Tab Content */}
-        <div className="bg-white rounded shadow-sm min-h-[500px] border border-slate-200">
+        <div className={`bg-white rounded shadow-sm border border-slate-200 ${activeTab === 'canvas' ? 'min-h-[calc(100vh-160px)]' : 'min-h-[500px]'}`}>
           {activeTab === 'data' && (
             <div className="flex flex-col">
               <div className="bg-slate-100 p-2 border-b border-slate-200 flex space-x-2">
                  <button onClick={() => setActiveStage('1')} className={`px-3 py-1 text-sm font-medium rounded ${activeStage === '1' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'}`}>Stage 1: Syntax & Base Data</button>
                  <button onClick={() => setActiveStage('2')} className={`px-3 py-1 text-sm font-medium rounded ${activeStage === '2' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'}`}>Stage 2: Topology & Fixing</button>
-                 <button onClick={() => setActiveStage('3')} className={`px-3 py-1 text-sm font-medium rounded ${activeStage === '3' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'}`}>Stage 3: Final Checks</button>
+                 <button onClick={() => setActiveStage('3')} className={`px-3 py-1 text-sm font-medium rounded ${activeStage === '3' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'}`}>Stage 3: Final Checks (Pending)</button>
               </div>
               <div className="p-2">
                 <DataTableTab stage={activeStage} />
@@ -104,7 +101,7 @@ function MainApp() {
             </div>
           )}
           {activeTab === 'core' && <div className="p-4"><CoreProcessorTab /></div>}
-          {activeTab === 'canvas' && <div className="p-2">{isDrawMode ? <DrawCanvasTab /> : <CanvasTab />}</div>}
+          {activeTab === 'canvas' && <div className="p-0 h-full">{isDrawMode ? <DrawCanvasTab /> : <CanvasTab />}</div>}
           {activeTab === 'config' && <ConfigTab />}
           {activeTab === 'output' && <OutputTab />}
         </div>

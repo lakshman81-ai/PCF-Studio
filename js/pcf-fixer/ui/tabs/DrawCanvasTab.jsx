@@ -12,6 +12,14 @@ import { ViewCube } from '../components/ViewCube';
 // Helper to draw the accumulated user geometry
 const DrawCanvas_DrawnComponents = ({ pipes, appSettings, selectedIndices, hiddenIndices, dcDispatch, activeTool }) => {
     const colors = appSettings?.componentColors || {};
+    const toFinitePoint = (p) => {
+        if (!p || typeof p !== 'object') return null;
+        const x = Number.parseFloat(p.x);
+        const y = Number.parseFloat(p.y);
+        const z = Number.parseFloat(p.z);
+        if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return null;
+        return { x, y, z };
+    };
 
     const handlePointerDown = (e, i) => {
         if (activeTool !== 'VIEW') return;
@@ -29,9 +37,12 @@ const DrawCanvas_DrawnComponents = ({ pipes, appSettings, selectedIndices, hidde
         <group>
             {pipes.map((pipe, i) => {
                 if (hiddenIndices.includes(i)) return null;
+                const ep1Safe = toFinitePoint(pipe?.ep1);
+                const ep2Safe = toFinitePoint(pipe?.ep2);
+                if (!ep1Safe || !ep2Safe) return null;
 
-                const ep1 = new THREE.Vector3(pipe.ep1.x, pipe.ep1.y, pipe.ep1.z);
-                const ep2 = new THREE.Vector3(pipe.ep2.x, pipe.ep2.y, pipe.ep2.z);
+                const ep1 = new THREE.Vector3(ep1Safe.x, ep1Safe.y, ep1Safe.z);
+                const ep2 = new THREE.Vector3(ep2Safe.x, ep2Safe.y, ep2Safe.z);
                 const dist = ep1.distanceTo(ep2);
                 const mid = new THREE.Vector3().addVectors(ep1, ep2).multiplyScalar(0.5);
 
@@ -1089,11 +1100,32 @@ export function DrawCanvasTab() {
                         const data = useStore.getState().dataTable;
                         if (data && data.length > 0) {
                             if (window.confirm('Pulling from 3D Topo will overwrite the current drawing. Continue?')) {
-                                const payloadData = JSON.parse(JSON.stringify(data)).map(r => ({
-                                    ...r,
-                                    rowUid: r.rowUid || `topo_${r._rowIndex}_${Date.now()}`,
-                                    sourceDomain: r.sourceDomain || 'main3D'
-                                }));
+                                const payloadData = JSON.parse(JSON.stringify(data))
+                                    .filter(r => r && r.ep1 && r.ep2)
+                                    .map(r => ({
+                                        ...r,
+                                        ep1: {
+                                            x: Number.parseFloat(r.ep1.x),
+                                            y: Number.parseFloat(r.ep1.y),
+                                            z: Number.parseFloat(r.ep1.z)
+                                        },
+                                        ep2: {
+                                            x: Number.parseFloat(r.ep2.x),
+                                            y: Number.parseFloat(r.ep2.y),
+                                            z: Number.parseFloat(r.ep2.z)
+                                        },
+                                        bore: Number.parseFloat(r.bore) || 200,
+                                        rowUid: r.rowUid || `topo_${r._rowIndex}_${Date.now()}`,
+                                        sourceDomain: r.sourceDomain || 'main3D'
+                                    }))
+                                    .filter(r =>
+                                        Number.isFinite(r.ep1.x) && Number.isFinite(r.ep1.y) && Number.isFinite(r.ep1.z) &&
+                                        Number.isFinite(r.ep2.x) && Number.isFinite(r.ep2.y) && Number.isFinite(r.ep2.z)
+                                    );
+                                if (payloadData.length === 0) {
+                                    alert('No valid EP1/EP2 rows found in 3D Topo.');
+                                    return;
+                                }
                                 dcDispatch({ type: 'SET_ALL_COMPONENTS', payload: payloadData });
                             }
                         } else {
@@ -1458,8 +1490,8 @@ export function DrawCanvasTab() {
                     );
                 })()}
                 {!isPanelOpen && (
-                    <button onClick={() => setIsPanelOpen(true)} className="absolute right-0 top-1/2 bg-slate-800 text-slate-400 border border-r-0 border-slate-700 p-1 rounded-l z-20 hover:text-white hover:bg-slate-700">
-                        ◀
+                    <button onClick={() => setIsPanelOpen(true)} className="absolute top-14 right-3 bg-slate-800 text-slate-300 border border-slate-700 px-2 py-1 rounded z-20 hover:text-white hover:bg-slate-700 text-[11px] font-semibold">
+                        Open Properties
                     </button>
                 )}
             </div>
