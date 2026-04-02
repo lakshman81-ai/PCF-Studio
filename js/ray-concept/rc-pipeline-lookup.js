@@ -130,6 +130,14 @@ function _derivePipingClass(pipelineRef, cfg) {
   return token || null;
 }
 
+function _deriveLineNoFromPipelineRef(pipelineRef, cfg) {
+  if (!pipelineRef) return '';
+  const pc = cfg?.smartData?.pipingClassLogic || {};
+  const delim = pc.tokenDelimiter || '-';
+  const idx = typeof pc.tokenIndex === 'number' ? pc.tokenIndex : 4;
+  return String(pipelineRef).split(delim)[idx]?.trim() || '';
+}
+
 function _deriveRating(pipingClass, cfg) {
   if (!pipingClass) return null;
   const map2 = cfg?.ratingPrefixMap?.twoChar || { '10': 10000, '20': 20000, '15': 1500, '25': 2500 };
@@ -307,6 +315,10 @@ export function lookupPipelineRefs(components, cfg) {
         // line-like column exists, keep lineNoKey blank instead of propagating wrong data.
         lineNoText = '';
       }
+    }
+    if (lineNoText === '' && entry.pipelineRef) {
+      // Final fallback: derive line key token from pipeline reference using the same token logic.
+      lineNoText = _deriveLineNoFromPipelineRef(entry.pipelineRef, cfg);
     }
     if (lineNoText !== '') {
       comp.lineNoKey = lineNoText;

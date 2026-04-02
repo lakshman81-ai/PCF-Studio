@@ -957,6 +957,7 @@ function _mapToDatatableRow(comp, rowIndex) {
   for (let n = 1; n <= 10; n++) ca[n] = comp[`ca${n}`] ?? '';
   return {
     _rowIndex:   rowIndex,
+    refNo:       comp.refNo       || '',
     type:        comp.type        || '',
     bore:        comp.bore        ?? null,
     branchBore:  comp.branchBore  ?? null,
@@ -979,9 +980,10 @@ function _mapToDatatableRow(comp, rowIndex) {
 }
 
 async function runPushToDatatable(root) {
-  const sourceRows = rcState.finalComponents.length
-    ? rcState.finalComponents
-    : rcState.components;
+  // Default push source = Stage-1/masters/pipeline rows (no injected bridge pipes).
+  const sourceRows = rcState.components.length
+    ? rcState.components
+    : rcState.finalComponents;
   if (!sourceRows.length) {
     passLog(root, `⚠ No rows available. Run S1 first`, 'warn');
     _mastersLog('warn', '⚠ Push skipped: no rows available (run S1 first)');
@@ -990,7 +992,11 @@ async function runPushToDatatable(root) {
   }
   try {
     const rows = sourceRows.map((c, i) => _mapToDatatableRow(c, i));
-    const src = rcState.finalComponents.length ? 'finalComponents' : 'components(S1)';
+    const src = rcState.components.length ? 'components(S1)' : 'finalComponents(fallback)';
+    const missingRefNo = rows.filter(r => !String(r.refNo || '').trim()).length;
+    const missingLineNo = rows.filter(r => !String(r.lineNoKey || '').trim()).length;
+    const uniqueRefNo = new Set(rows.map(r => String(r.refNo || '').trim()).filter(Boolean)).size;
+    const pipeNoRef = rows.filter(r => String((r.type || '')).toUpperCase() === 'PIPE' && !String(r.refNo || '').trim()).length;
     window.__pcfPendingDataTable = rows;
     const delivery = [];
     if (typeof window.__pcfSetDataTable === 'function') {
@@ -1008,7 +1014,11 @@ async function runPushToDatatable(root) {
     passLog(root, `✓ Pushed ${rows.length} rows`, 'success');
     _mastersLog('info', `✅ Push to Datatable complete — ${rows.length} rows`, {
       source: src,
-      mode: delivery.join(' + ') || 'none'
+      mode: delivery.join(' + ') || 'none',
+      missingRefNo,
+      missingLineNo,
+      uniqueRefNo,
+      pipeNoRef
     });
     switchSubTab(root, 'masterslog');
     const statusEl = root.querySelector('#rc-masters-status');
