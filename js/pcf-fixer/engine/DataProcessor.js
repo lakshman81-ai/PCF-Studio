@@ -1,6 +1,9 @@
 import { vec } from '../math/VectorMath.js';
 import { runPTEEngine } from './pte-engine.js';
 import { validatePcfData } from './SchemaValidator.js';
+import { convertInchToMmIfEnabled, toStrictNumber } from '../../services/bore-utils.js';
+import { getOletBrlen, getTeeBrlen, resolveWeightForCa8 } from '../../services/fallbackcontract.js';
+import { detectRating } from '../../services/rating-detector.js';
 
 export function runDataProcessor(dataTable, config, logger) {
   logger.push({ stage: "TRANSLATION", type: "Info", message: "═══ RUNNING PRE-VALIDATION DATA PROCESSING (STEPS 1-11) ═══" });
@@ -59,8 +62,9 @@ export function runDataProcessor(dataTable, config, logger) {
     seq++;
 
     // Step 4: Bore Conversion
-    if (row.bore && row.bore <= 48 && !stdMm.has(row.bore)) {
-      row.bore = Math.round(row.bore * 25.4 * 10) / 10;
+    const convertedBore = convertInchToMmIfEnabled(row.bore, config?.enableBoreInchToMm === true, Array.from(stdMm));
+    if (convertedBore != null && convertedBore !== row.bore) {
+      row.bore = convertedBore;
       markModified(row, "bore", "Calculated");
       logger.push({ type: "Warning", row: row._rowIndex, message: `[Step 4] Bore converted from inches to ${row.bore}mm.` });
     }
@@ -77,19 +81,43 @@ export function runDataProcessor(dataTable, config, logger) {
 
     // Step 6: CP/BP Calculation
     if (t === "TEE") {
-      // Re-calculate the Tee Centre Point using line intersection maths or midpoint if completely corrupted
+      const boreNum = toStrictNumber(row.bore, 0) || 0;
       if ((!row.cp || (row.cp.x === 9999 && row.cp.y === 9999)) && row.ep1 && row.ep2) {
           row.cp = vec.mid(row.ep1, row.ep2);
           markModified(row, "cp", "Calculated Midpoint");
       }
-      if (!row.bp && row.cp) {
-          // Reconstruct branch point. Usually along an orthogonal axis. Just an approximation for BM3 if completely missing.
-          row.bp = { x: row.cp.x, y: row.cp.y + (row.bore || 100), z: row.cp.z };
-          markModified(row, "bp", "Calculated");
-      }
+
       if (!row.branchBore) {
-          // Will be inferred from connected branch pipe during topology, but default to main bore here
-          row.branchBore = row.bore;
+          row.branchBore = boreNum;
+          markModified(row, "branchBore", "Calculated");
+      }
+
+      if (!row.bp && row.cp && row.ep1 && row.ep2) {
+          const hVec = vec.sub(row.ep2, row.ep1);
+          const mag = vec.mag(hVec) || 1;
+          const n = { x: hVec.x / mag, y: hVec.y / mag, z: hVec.z / mag };
+          const axes = [
+            { x: 1, y: 0, z: 0, axis: 'x' },
+            { x: 0, y: 1, z: 0, axis: 'y' },
+            { x: 0, y: 0, z: 1, axis: 'z' }
+          ];
+          axes.sort((a, b) => Math.abs(a.x*n.x + a.y*n.y + a.z*n.z) - Math.abs(b.x*n.x + b.y*n.y + b.z*n.z));
+          const pick = axes[0];
+          const offset = toStrictNumber(row.branchBore, boreNum || 100) || 100;
+          row.bp = {
+            x: row.cp.x + pick.x * offset,
+            y: row.cp.y + pick.y * offset,
+            z: row.cp.z + pick.z * offset
+          };
+          markModified(row, "bp", "Calculated Orthogonal");
+      }
+
+      if (!row.brlen && row.bore && row.branchBore) {
+          const brlen = getTeeBrlen(toStrictNumber(row.bore, NaN), toStrictNumber(row.branchBore, NaN));
+          if (brlen != null) {
+            row.brlen = brlen;
+            markModified(row, "brlen", "MasterTable");
+          }
       }
     }
 
@@ -103,22 +131,45 @@ export function runDataProcessor(dataTable, config, logger) {
     }
 
     if (t === "OLET") {
-        if (!row.bore || !row.branchBore) {
-            row.bore = 100; // Infer from main line in topology, default for now
-            row.branchBore = 50; // Infer from branch, default for now
-            markModified(row, "bore", "Inferred");
+        if (!row.branchBore) {
+            row.branchBore = toStrictNumber(row.bore, 50) || 50;
+            markModified(row, "branchBore", "Calculated");
         }
         if (!row.cp && row.ep1) {
-            row.cp = { ...row.ep1 }; // simplified
+            row.cp = { ...row.ep1 };
             markModified(row, "cp", "Calculated");
         } else if (!row.cp && !row.ep1 && row.bp) {
-            // BM5 fallback if malformed, place CP below BP
-            row.cp = { x: row.bp.x, y: row.bp.y - 50, z: row.bp.z };
-            // Since it's malformed, we also need to fake an ep1/ep2 so downstream works
-            row.ep1 = { ...row.cp };
-            row.ep2 = { ...row.cp };
+            row.cp = { x: row.bp.x, y: row.bp.y, z: row.bp.z };
             markModified(row, "cp", "Calculated Fallback");
         }
+
+        if (!row.brlen && row.bore && row.branchBore) {
+            const brlen = getOletBrlen(toStrictNumber(row.bore, NaN), toStrictNumber(row.branchBore, NaN));
+            if (brlen != null) {
+              row.brlen = brlen;
+              markModified(row, "brlen", "MasterTable");
+            }
+        }
+    }
+
+
+    // Step 7: Unified CA8 weight fallback contract (scope guarded)
+    if (!row.ca) row.ca = {};
+    const directCa8 = row.ca[8] ?? row.ca8 ?? null;
+    const ratingClass = toStrictNumber(row.rating ?? detectRating(row.pipingClass || row.pipelineRef || ''), null);
+    const weightResolution = resolveWeightForCa8({
+      type: t,
+      directWeight: directCa8,
+      boreMm: row.bore,
+      ratingClass,
+      valveType: row.itemDescription || row.rigidType || row.description || ''
+    }, { includeApprovedFittings: false });
+    if (weightResolution.weight != null) {
+      row.ca[8] = String(weightResolution.weight);
+      row.ca8 = String(weightResolution.weight);
+      row.ca8Trace = weightResolution.trace.join(' > ');
+      markModified(row, 'ca8', 'FallbackContract');
+      logger.push({ type: 'Info', row: row._rowIndex, message: `[Step 7] CA8 resolved via ${row.ca8Trace}.` });
     }
 
     // Pointers
