@@ -176,10 +176,19 @@ body {
   background: var(--bg-1);
   border-bottom: 1px solid var(--steel);
   display: flex;
+  align-items: center;
   gap: 0;
   overflow-x: auto;
   scrollbar-width: none;
   padding: 0 1rem;
+}
+
+.nav-header-inline {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: max-content;
 }
 
 #tab-nav::-webkit-scrollbar {
