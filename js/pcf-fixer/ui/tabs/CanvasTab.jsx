@@ -2167,6 +2167,26 @@ const ControlsAutoCenter = ({ externalRef }) => {
     const [targetPos, setTargetPos] = useState(null);
     const [camPos, setCamPos] = useState(null);
     const isAnimating = useRef(false);
+    const applyViewerFitPolicy = (camera, target, maxDim) => {
+        if (!camera || !target) return;
+        const safeDim = Math.max(maxDim || 1, 1);
+
+        if (camera.isOrthographicCamera) {
+            const aspect = window.innerWidth / Math.max(window.innerHeight, 1);
+            const half = safeDim * 0.8;
+            camera.left = -half * aspect;
+            camera.right = half * aspect;
+            camera.top = half;
+            camera.bottom = -half;
+            camera.near = -safeDim * 20;
+            camera.far = safeDim * 20;
+            camera.updateProjectionMatrix();
+        } else if (camera.isPerspectiveCamera) {
+            camera.near = Math.max(0.1, safeDim * 0.001);
+            camera.far = Math.max(camera.near + 1000, safeDim * 50);
+            camera.updateProjectionMatrix();
+        }
+    };
 
     // Smooth camera interpolation
     useFrame((state, delta) => {
@@ -2209,7 +2229,7 @@ const ControlsAutoCenter = ({ externalRef }) => {
         const handleCenter = (e) => {
             const pipes = getPipes();
             const immutables = useStore.getState().getImmutables();
-            const allEls = [...pipes, ...immutables].filter(el => (el.type || '').toUpperCase() !== 'SUPPORT');
+            const allEls = [...pipes, ...immutables];
 
             if (allEls.length === 0 || !controlsRef.current) return;
 
@@ -2236,8 +2256,10 @@ const ControlsAutoCenter = ({ externalRef }) => {
                 const centerZ = (minZ + maxZ) / 2;
 
                 const tPos = new THREE.Vector3(centerX, centerY, centerZ);
-                const maxDim = Math.max(maxX - minX, maxY - minY, maxZ - minZ);
+                const maxDim = Math.max(maxX - minX, maxY - minY, maxZ - minZ) || 1;
+                // Align with viewer fit behavior: diagonal offset from center by max dimension.
                 const cPos = new THREE.Vector3(centerX + maxDim, centerY + maxDim, centerZ + maxDim);
+                applyViewerFitPolicy(controlsRef.current.object, tPos, maxDim);
 
                 setTargetPos(tPos);
                 setCamPos(cPos);

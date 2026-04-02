@@ -50,10 +50,10 @@ const _defaults = {
   },
 
   // PIPELINE-REFERENCE prefix word
-  pipelineRefPrefix: 'export',
+  pipelineRefPrefix: '',
 
   // Default piping class for 2D CSV when none is resolved from data
-  defaultPipingClass: 'CA150',
+  defaultPipingClass: '11403',
   enableBoreInchToMm: false,
 
   // ── PCF Fixer datatable mapping (Final 2D CSV field → dataTable field) ─────

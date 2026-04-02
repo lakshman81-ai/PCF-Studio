@@ -58,6 +58,27 @@ function _pickCol(row, primary, aliases) {
   return undefined;
 }
 
+function _normKey(v) {
+  return String(v ?? '')
+    .normalize('NFKC')
+    .replace(/\u00A0/g, ' ')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function _resolveHeader(row, preferred, aliases = []) {
+  const keys = Object.keys(row || {});
+  const byNorm = new Map(keys.map(k => [_normKey(k), k]));
+  const candidates = [preferred, ...aliases].filter(Boolean);
+  for (const c of candidates) {
+    if (row[c] != null) return c;
+    const found = byNorm.get(_normKey(c));
+    if (found) return found;
+  }
+  return null;
+}
+
 /**
  * Try to parse a packed position string like "E 150000mm N 152500mm U 1336.5mm"
  * or "E=150000 N=152500 U=1336.5".  Returns {x,y,z} or null.
@@ -109,6 +130,14 @@ function _derivePipingClass(pipelineRef, cfg) {
   return token || null;
 }
 
+function _deriveLineNoFromPipelineRef(pipelineRef, cfg) {
+  if (!pipelineRef) return '';
+  const pc = cfg?.smartData?.pipingClassLogic || {};
+  const delim = pc.tokenDelimiter || '-';
+  const idx = typeof pc.tokenIndex === 'number' ? pc.tokenIndex : 4;
+  return String(pipelineRef).split(delim)[idx]?.trim() || '';
+}
+
 function _deriveRating(pipingClass, cfg) {
   if (!pipingClass) return null;
   const map2 = cfg?.ratingPrefixMap?.twoChar || { '10': 10000, '20': 20000, '15': 1500, '25': 2500 };
@@ -151,14 +180,20 @@ export function lookupPipelineRefs(components, cfg) {
     'Line Number (Derived)', 'Line No. (Derived)', 'Line No (Derived)',
     'Line Number', 'Line No', 'LineNo', 'LINE_NO', 'LineNumber'
   ];
-  const lineNoCol = hMap.lineNo ||
-    LINE_NO_ALIASES.find(k => k in (lineDump[0] || {})) ||
-    'Line Number (Derived)';
+  const lineNoCol = _resolveHeader(lineDump[0] || {}, hMap.lineNo, [
+    ...LINE_NO_ALIASES,
+    'LINE NO.(DERIVED)',
+    'LINE NO (DERIVED)'
+  ]) || 'Line Number (Derived)';
 
   // Auto-detect which column carries the pipeline/pipe name
   const PIPE_COL_CANDIDATES = ['PIPE', 'Pipeline', 'PipeRef', 'Pipe Ref', 'pipe_ref', 'pipeline'];
   const sampleRow = lineDump[0] || {};
-  const pipeCol   = PIPE_COL_CANDIDATES.find(k => k in sampleRow) || null;
+  const pipeCol   = _resolveHeader(sampleRow, null, PIPE_COL_CANDIDATES);
+  const lineNoCandidateCols = Object.keys(sampleRow).filter((k) => {
+    const n = _normKey(k);
+    return n.includes('line') && n.includes('no') && k !== pipeCol;
+  });
 
   // Elevation offset: added to Line Dump "Up" coord before matching
   const elevOffset = parseFloat(cfg?.smartData?.e3dElevationOffset ?? 0) || 0;
@@ -264,11 +299,35 @@ export function lookupPipelineRefs(components, cfg) {
     }
 
     // ── LINENO KEY ───────────────────────────────────────────────────
-    const lineNo = match[lineNoCol];
-    if (lineNo != null && String(lineNo).trim() !== '') {
-      comp.lineNoKey = String(lineNo).trim();
+    let lineNo = match[lineNoCol];
+    let lineNoText = lineNo != null ? String(lineNo).trim() : '';
+    if (lineNoText && entry.pipelineRef && lineNoText === entry.pipelineRef) {
+      const altCol = lineNoCandidateCols.find((col) => {
+        const v = match[col];
+        if (v == null) return false;
+        const t = String(v).trim();
+        return t !== '' && t !== entry.pipelineRef;
+      });
+      if (altCol) {
+        lineNoText = String(match[altCol]).trim();
+      } else {
+        // Strict anti-collision: if lineNo resolves to pipelineRef and no alternate
+        // line-like column exists, keep lineNoKey blank instead of propagating wrong data.
+        lineNoText = '';
+      }
+    }
+    if (lineNoText === '' && entry.pipelineRef) {
+      // Final fallback: derive line key token from pipeline reference using the same token logic.
+      lineNoText = _deriveLineNoFromPipelineRef(entry.pipelineRef, cfg);
+    }
+    if (lineNoText !== '') {
+      comp.lineNoKey = lineNoText;
       entry.lineNoKey = comp.lineNoKey;
       changed = true;
+    } else if (entry.pipelineRef && String(comp.lineNoKey || '').trim() === entry.pipelineRef) {
+      // Prevent stale wrong value from previous stage/import.
+      comp.lineNoKey = '';
+      entry.lineNoKey = '';
     }
 
     // ── PIPING CLASS (from pipelineRef segment) ──────────────────────
