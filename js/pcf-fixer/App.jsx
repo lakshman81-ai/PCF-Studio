@@ -36,8 +36,9 @@ function MainApp() {
       const handleExternalData = (e) => {
           // When external data is loaded via window.__pcfSetDataTable, sync it to AppContext as well
           const components = e.detail.components;
+          dispatch({ type: "SET_DATA_TABLE", payload: components });
           dispatch({ type: "SET_STAGE_2_DATA", payload: components });
-          setActiveTab('fixer'); // Auto-switch to fixer tab to view the injected data
+          setActiveTab('data'); // Show Data Table tab (valid key in this app)
       };
       window.addEventListener('external-data-loaded', handleExternalData);
 

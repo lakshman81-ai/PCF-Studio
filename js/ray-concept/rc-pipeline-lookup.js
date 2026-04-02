@@ -302,12 +302,20 @@ export function lookupPipelineRefs(components, cfg) {
       });
       if (altCol) {
         lineNoText = String(match[altCol]).trim();
+      } else {
+        // Strict anti-collision: if lineNo resolves to pipelineRef and no alternate
+        // line-like column exists, keep lineNoKey blank instead of propagating wrong data.
+        lineNoText = '';
       }
     }
     if (lineNoText !== '') {
       comp.lineNoKey = lineNoText;
       entry.lineNoKey = comp.lineNoKey;
       changed = true;
+    } else if (entry.pipelineRef && String(comp.lineNoKey || '').trim() === entry.pipelineRef) {
+      // Prevent stale wrong value from previous stage/import.
+      comp.lineNoKey = '';
+      entry.lineNoKey = '';
     }
 
     // ── PIPING CLASS (from pipelineRef segment) ──────────────────────

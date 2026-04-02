@@ -2209,7 +2209,7 @@ const ControlsAutoCenter = ({ externalRef }) => {
         const handleCenter = (e) => {
             const pipes = getPipes();
             const immutables = useStore.getState().getImmutables();
-            const allEls = [...pipes, ...immutables].filter(el => (el.type || '').toUpperCase() !== 'SUPPORT');
+            const allEls = [...pipes, ...immutables];
 
             if (allEls.length === 0 || !controlsRef.current) return;
 
@@ -2236,7 +2236,8 @@ const ControlsAutoCenter = ({ externalRef }) => {
                 const centerZ = (minZ + maxZ) / 2;
 
                 const tPos = new THREE.Vector3(centerX, centerY, centerZ);
-                const maxDim = Math.max(maxX - minX, maxY - minY, maxZ - minZ);
+                const maxDim = Math.max(maxX - minX, maxY - minY, maxZ - minZ) || 1;
+                // Align with viewer fit behavior: diagonal offset from center by max dimension.
                 const cPos = new THREE.Vector3(centerX + maxDim, centerY + maxDim, centerZ + maxDim);
 
                 setTargetPos(tPos);
