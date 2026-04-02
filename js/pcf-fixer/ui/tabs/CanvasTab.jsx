@@ -2167,6 +2167,26 @@ const ControlsAutoCenter = ({ externalRef }) => {
     const [targetPos, setTargetPos] = useState(null);
     const [camPos, setCamPos] = useState(null);
     const isAnimating = useRef(false);
+    const applyViewerFitPolicy = (camera, target, maxDim) => {
+        if (!camera || !target) return;
+        const safeDim = Math.max(maxDim || 1, 1);
+
+        if (camera.isOrthographicCamera) {
+            const aspect = window.innerWidth / Math.max(window.innerHeight, 1);
+            const half = safeDim * 0.8;
+            camera.left = -half * aspect;
+            camera.right = half * aspect;
+            camera.top = half;
+            camera.bottom = -half;
+            camera.near = -safeDim * 20;
+            camera.far = safeDim * 20;
+            camera.updateProjectionMatrix();
+        } else if (camera.isPerspectiveCamera) {
+            camera.near = Math.max(0.1, safeDim * 0.001);
+            camera.far = Math.max(camera.near + 1000, safeDim * 50);
+            camera.updateProjectionMatrix();
+        }
+    };
 
     // Smooth camera interpolation
     useFrame((state, delta) => {
@@ -2209,7 +2229,7 @@ const ControlsAutoCenter = ({ externalRef }) => {
         const handleCenter = (e) => {
             const pipes = getPipes();
             const immutables = useStore.getState().getImmutables();
-            const allEls = [...pipes, ...immutables].filter(el => (el.type || '').toUpperCase() !== 'SUPPORT');
+            const allEls = [...pipes, ...immutables];
 
             if (allEls.length === 0 || !controlsRef.current) return;
 
@@ -2236,8 +2256,10 @@ const ControlsAutoCenter = ({ externalRef }) => {
                 const centerZ = (minZ + maxZ) / 2;
 
                 const tPos = new THREE.Vector3(centerX, centerY, centerZ);
-                const maxDim = Math.max(maxX - minX, maxY - minY, maxZ - minZ);
+                const maxDim = Math.max(maxX - minX, maxY - minY, maxZ - minZ) || 1;
+                // Align with viewer fit behavior: diagonal offset from center by max dimension.
                 const cPos = new THREE.Vector3(centerX + maxDim, centerY + maxDim, centerZ + maxDim);
+                applyViewerFitPolicy(controlsRef.current.object, tPos, maxDim);
 
                 setTargetPos(tPos);
                 setCamPos(cPos);
@@ -2417,6 +2439,21 @@ const ControlsAutoCenter = ({ externalRef }) => {
 export function CanvasTab() {
   const { state: appState, dispatch } = useAppContext();
   const orthoMode = useStore(state => state.orthoMode);
+  const gridCenter = useMemo(() => {
+      const rows = appState.stage2Data || [];
+      if (!rows.length) return { x: 0, y: 0, z: 0 };
+      let minX = Infinity, minY = Infinity, minZ = Infinity;
+      let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+      rows.forEach((r) => {
+          [r.ep1, r.ep2, r.cp, r.bp].forEach((p) => {
+              if (!p) return;
+              minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); minZ = Math.min(minZ, p.z);
+              maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); maxZ = Math.max(maxZ, p.z);
+          });
+      });
+      if (minX === Infinity) return { x: 0, y: 0, z: 0 };
+      return { x: (minX + maxX) / 2, y: (minY + maxY) / 2, z: (minZ + maxZ) / 2 };
+  }, [appState.stage2Data]);
 
 
   const showSideInspector = useStore(state => state.showSideInspector);
@@ -2852,7 +2889,7 @@ export function CanvasTab() {
         <ambientLight intensity={0.6} />
         <directionalLight position={[1000, 1000, 500]} intensity={1.5} />
         <directionalLight position={[-1000, -1000, -500]} intensity={0.5} />
-        {appSettings.showGrid && <gridHelper args={[10000, 100]} position={[0, 0, 0]} />}
+        {appSettings.showGrid && <gridHelper args={[10000, 100]} position={[gridCenter.x, gridCenter.y, gridCenter.z]} />}
         {appSettings.showAxes && <axesHelper args={[2000]} />}
 
         {appState.stage2Data && appState.stage2Data.length > 0 && (
@@ -2914,7 +2951,7 @@ export function CanvasTab() {
         <ControlsAutoCenter externalRef={dragOrbitRef} />
 
         {/* World Reference */}
-        <gridHelper args={[20000, 20, '#1e293b', '#0f172a']} position={[0, -1000, 0]} />
+        <gridHelper args={[20000, 20, '#1e293b', '#0f172a']} position={[gridCenter.x, gridCenter.y - 1000, gridCenter.z]} />
       </Canvas>
 
     </div>

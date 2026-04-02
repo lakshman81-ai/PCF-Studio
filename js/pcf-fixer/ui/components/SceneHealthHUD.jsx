@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { useStore } from '../../store/useStore';
 
 const getDist = (p1, p2) => {
@@ -14,6 +14,8 @@ export const SceneHealthHUD = () => {
   const setShowGapRadar = useStore(state => state.setShowGapRadar);
   const multiSelectedIds = useStore(state => state.multiSelectedIds);
   const hiddenElementIds = useStore(state => state.hiddenElementIds);
+  const [pos, setPos] = useState({ x: 16, y: 16 });
+  const dragRef = useRef({ dragging: false, dx: 0, dy: 0 });
 
   const stats = useMemo(() => {
     let pipes = 0;
@@ -67,7 +69,29 @@ export const SceneHealthHUD = () => {
   if (dataTable.length === 0) return null;
 
   return (
-    <div className="absolute right-4 top-4 z-40 flex bg-slate-900/90 backdrop-blur-md rounded-full shadow-lg border border-slate-700/50 p-1 text-xs select-none">
+    <div
+      className="absolute z-40 flex bg-slate-900/90 backdrop-blur-md rounded-full shadow-lg border border-slate-700/50 p-1 text-xs select-none cursor-move"
+      style={{ left: `${pos.x}px`, top: `${pos.y}px` }}
+      onMouseDown={(e) => {
+        dragRef.current.dragging = true;
+        dragRef.current.dx = e.clientX - pos.x;
+        dragRef.current.dy = e.clientY - pos.y;
+        const onMove = (ev) => {
+          if (!dragRef.current.dragging) return;
+          setPos({
+            x: Math.max(8, ev.clientX - dragRef.current.dx),
+            y: Math.max(8, ev.clientY - dragRef.current.dy)
+          });
+        };
+        const onUp = () => {
+          dragRef.current.dragging = false;
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup', onUp);
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      }}
+    >
 
       <div className="flex items-center gap-1.5 px-3 py-1 border-r border-slate-700/50">
         <span className="text-slate-400 font-medium">Pipes:</span>

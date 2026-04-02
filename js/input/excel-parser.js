@@ -37,10 +37,10 @@ export async function readExcelAsCSV(file, sheetIndex = 0) {
   const sheetName = sheetNames[sheetIndex];
   const sheet     = workbook.Sheets[sheetName];
 
-  // sheet_to_csv: converts to CSV with tab as delimiter for safety
-  const csv = XLSX.utils.sheet_to_csv(sheet, { FS: "\t", RS: "\n", blankrows: false });
+  // sheet_to_csv: output canonical CSV so Stage-1 parser reads it like normal CSV uploads
+  const csv = XLSX.utils.sheet_to_csv(sheet, { FS: ",", RS: "\n", blankrows: false });
 
-  console.info(`${LOG_PREFIX} Converted sheet "${sheetName}" to TSV.`, {
+  console.info(`${LOG_PREFIX} Converted sheet "${sheetName}" to CSV.`, {
     sheets:    sheetNames,
     activeSheet: sheetName,
     csvLength: csv.length,

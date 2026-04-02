@@ -14,6 +14,7 @@ import { debugLog, clearLog, getLog, renderDebugTab } from './rc-debug.js';
 import { loadMastersInto }    from './rc-master-loader.js';
 import { lookupPipelineRefs, formatDetailForLog } from './rc-pipeline-lookup.js';
 import { getConfig }          from '../config/config-store.js';
+import { readExcelAsCSV, isExcelFile } from '../input/excel-parser.js';
 
 // ── Internal state (isolated to this tab) ────────────────────────────────────
 const rcState = {
@@ -74,8 +75,8 @@ function buildPanelHTML() {
     <!-- Brand zone -->
     <div class="rc-tier-brand">
       <span class="rc-brand-mark">⚡ RAY</span>
-      <input type="file" id="rc-file-input" accept=".csv,.txt" style="display:none">
-      <button id="rc-btn-upload" style="${actionPill}">${ICO.upload} CSV</button>
+      <input type="file" id="rc-file-input" accept=".csv,.txt,.xlsx,.xls,.xlsm" style="display:none">
+      <button id="rc-btn-upload" style="${actionPill}">${ICO.upload} CSV / XLSX</button>
       <span id="rc-filename" class="rc-filename">No file loaded</span>
     </div>
     <span class="rc-brand-sep"></span>
@@ -118,8 +119,8 @@ function buildPanelHTML() {
     <!-- Data Enrichment group -->
     <div class="rc-action-group enrichment">
       <span class="rc-action-group-label">Enrich</span>
-      <button id="rc-btn-load-masters" style="${actionPill}" disabled>${ICO.database} Masters</button>
       <button id="rc-btn-pipeline-lookup" style="${actionPill}" disabled title="Match component coordinates against Line Dump from E3D to populate Pipeline Reference, Line No Key, Piping Class and Rating on Final 2D CSV">${ICO.mapPin} Pipeline Ref</button>
+      <button id="rc-btn-load-masters" style="${actionPill}" disabled>${ICO.database} Masters</button>
       <span id="rc-masters-status" style="font-size:0.68rem;color:var(--text-muted);font-family:var(--font-inter)"></span>
     </div>
     <!-- Interface group -->
@@ -260,7 +261,7 @@ function wireEvents(root) {
   // File upload
   root.querySelector('#rc-btn-upload').addEventListener('click', () =>
     root.querySelector('#rc-file-input').click());
-  root.querySelector('#rc-file-input').addEventListener('change', e => onFileLoad(e, root));
+  root.querySelector('#rc-file-input').addEventListener('change', e => { void onFileLoad(e, root); });
 
   // RayConfig toggle
   root.querySelector('#rc-btn-config-toggle').addEventListener('click', () =>
@@ -371,23 +372,34 @@ function setConnDone(root, id) {
 }
 
 // ── File load ─────────────────────────────────────────────────────────────────
-function onFileLoad(e, root) {
+async function onFileLoad(e, root) {
   const file = e.target.files[0];
   if (!file) return;
   rcState.rawFileName = file.name;
   root.querySelector('#rc-filename').textContent = file.name;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    rcState.rawCsvText = ev.target.result;
+
+  try {
+    passLog(root, `── INPUT  ${_now()} ─────────`, 'header');
+    passLog(root, `  ${file.name}`, 'info');
+    if (isExcelFile(file)) {
+      const { csv, sheetName } = await readExcelAsCSV(file);
+      rcState.rawCsvText = csv;
+      passLog(root, `  ∙ Source sheet: ${sheetName}`, 'stat');
+    } else {
+      rcState.rawCsvText = await file.text();
+    }
+
     setBtn(root, '#rc-btn-s1', true);
     setBtn(root, '#rc-btn-run-all', true);
     setStepStatus(root, '#rc-btn-s1', 'ready');
-    const rawLines = ev.target.result.split('\n').length;
-    passLog(root, `── INPUT  ${_now()} ─────────`, 'header');
-    passLog(root, `  ${file.name}`, 'info');
+    const rawLines = String(rcState.rawCsvText || '').split('\n').length;
     passLog(root, `  ∙ ${rawLines} raw lines`, 'stat');
-  };
-  reader.readAsText(file);
+  } catch (err) {
+    passLog(root, `✕ Input load failed: ${err.message}`, 'error');
+    _mastersLog('error', '❌ Input load failed', { file: file.name, error: err.message });
+  } finally {
+    e.target.value = '';
+  }
 }
 
 // ── Stage runners ─────────────────────────────────────────────────────────────
@@ -528,25 +540,34 @@ async function runS4(root) {
 }
 
 async function runLoadMasters(root) {
-  if (!rcState.components.length) return;
+  const targets = rcState.finalComponents.length ? rcState.finalComponents : rcState.components;
+  if (!targets.length) return;
+  const usingFinal = rcState.finalComponents.length > 0;
   const statusEl = root.querySelector('#rc-masters-status');
   if (statusEl) statusEl.textContent = '⏳ Loading…';
-  _mastersLog('info', '📥 Masters started', { components: rcState.components.length });
+  _mastersLog('info', `📥 Masters started (${usingFinal ? 'Final CSV' : '2D CSV'})`, { components: targets.length });
   try {
     const cfg = getConfig();
     _mastersLog('info', 'Config loaded', {
       ratingMap2: JSON.stringify(cfg?.ratingPrefixMap?.twoChar || {}),
       ratingMap1: JSON.stringify(cfg?.ratingPrefixMap?.oneChar || {})
     });
-    const updated = await loadMastersInto(rcState.components, cfg);
-    _rebuildCsv2D();
-    render2DTable(root, rcState.csv2DText);
+    const updated = await loadMastersInto(targets, cfg);
+    if (usingFinal) {
+      rcState.finalCsv2DText = emit2DCSV(rcState.finalComponents, getRayConfig());
+      render2DTable(root, rcState.finalCsv2DText);
+      activatePreviewBtn(root, 'final2dcsv');
+    } else {
+      _rebuildCsv2D();
+      render2DTable(root, rcState.csv2DText);
+      activatePreviewBtn(root, '2dcsv');
+    }
     if (statusEl) statusEl.textContent = `✓ Updated ${updated} components`;
     passLog(root, `✓ Masters: ${updated} enriched`, 'success');
-    _mastersLog('info', `✅ Masters complete — ${updated}/${rcState.components.length} components updated`);
+    _mastersLog('info', `✅ Masters complete — ${updated}/${targets.length} components updated`);
     // Per-component detail log (CA values + rating)
     let withCA = 0, withRating = 0, noLineno = 0;
-    for (const c of rcState.components) {
+    for (const c of targets) {
       if (c.ca1 || c.ca2 || c.ca5 || c.ca10) withCA++;
       if (c.rating) withRating++;
       if (!c.lineNoKey) noLineno++;
@@ -557,10 +578,12 @@ async function runLoadMasters(root) {
       });
     }
     _mastersLog('info', 'Summary', { withCA, withRating, noLineNoKey: noLineno });
+    switchSubTab(root, 'masterslog');
   } catch (err) {
     if (statusEl) statusEl.textContent = `✕ ${err.message}`;
     passLog(root, `✕ Masters: ${err.message}`, 'error');
     _mastersLog('error', `❌ ${err.message}`);
+    switchSubTab(root, 'masterslog');
   }
 }
 
@@ -934,6 +957,7 @@ function _mapToDatatableRow(comp, rowIndex) {
   for (let n = 1; n <= 10; n++) ca[n] = comp[`ca${n}`] ?? '';
   return {
     _rowIndex:   rowIndex,
+    refNo:       comp.refNo       || '',
     type:        comp.type        || '',
     bore:        comp.bore        ?? null,
     branchBore:  comp.branchBore  ?? null,
@@ -948,29 +972,61 @@ function _mapToDatatableRow(comp, rowIndex) {
     supportName: comp.supportName ?? '',
     supportGuid: comp.supportGuid ?? '',
     pipelineRef: comp.pipelineRef ?? '',
+    lineNoKey:   comp.lineNoKey   ?? '',
+    pipingClass: comp.pipingClass ?? '',
+    rating:      comp.rating      ?? '',
     ca
   };
 }
 
 async function runPushToDatatable(root) {
-  if (!rcState.finalComponents.length) {
-    passLog(root, `⚠ Run S3/S4 first`, 'warn');
+  // Push source = Final 2D CSV rows when available (exact final count), fallback to S1.
+  const sourceRows = rcState.finalComponents.length
+    ? rcState.finalComponents
+    : rcState.components;
+  if (!sourceRows.length) {
+    passLog(root, `⚠ No rows available. Run S1 first`, 'warn');
+    _mastersLog('warn', '⚠ Push skipped: no rows available (run S1 first)');
+    switchSubTab(root, 'masterslog');
     return;
   }
   try {
-    const rows = rcState.finalComponents.map((c, i) => _mapToDatatableRow(c, i));
+    const rows = sourceRows.map((c, i) => _mapToDatatableRow(c, i));
+    const src = rcState.finalComponents.length ? 'finalComponents' : 'components(S1 fallback)';
+    const missingRefNo = rows.filter(r => !String(r.refNo || '').trim()).length;
+    const missingLineNo = rows.filter(r => !String(r.lineNoKey || '').trim()).length;
+    const uniqueRefNo = new Set(rows.map(r => String(r.refNo || '').trim()).filter(Boolean)).size;
+    const pipeNoRef = rows.filter(r => String((r.type || '')).toUpperCase() === 'PIPE' && !String(r.refNo || '').trim()).length;
+    window.__pcfPendingDataTable = rows;
+    const delivery = [];
     if (typeof window.__pcfSetDataTable === 'function') {
       window.__pcfSetDataTable(rows);
-    } else {
-      // Fallback: PCF Fixer not mounted yet — try Zustand store directly
-      const { useStore } = await import('/js/pcf-fixer/store/useStore.js');
-      useStore.getState().setDataTable(rows);
+      delivery.push('window.__pcfSetDataTable');
+    }
+    // Mirror directly to store too, to avoid stale global-hook timing.
+    try {
+      const { useStore } = await import('../pcf-fixer/store/useStore.js');
+      useStore.getState().setExternalDataTable(rows);
+      delivery.push('zustand.setExternalDataTable');
+    } catch (storeErr) {
+      _mastersLog('warn', '⚠ Secondary datatable mirror failed', { error: storeErr.message });
     }
     passLog(root, `✓ Pushed ${rows.length} rows`, 'success');
+    _mastersLog('info', `✅ Push to Datatable complete — ${rows.length} rows`, {
+      source: src,
+      mode: delivery.join(' + ') || 'none',
+      missingRefNo,
+      missingLineNo,
+      uniqueRefNo,
+      pipeNoRef
+    });
+    switchSubTab(root, 'masterslog');
     const statusEl = root.querySelector('#rc-masters-status');
     if (statusEl) statusEl.textContent = `✓ Pushed ${rows.length} rows`;
   } catch (err) {
     passLog(root, `✕ Push: ${err.message}`, 'error');
+    _mastersLog('error', '❌ Push to Datatable failed', { error: err.message });
+    switchSubTab(root, 'masterslog');
     const statusEl = root.querySelector('#rc-masters-status');
     if (statusEl) statusEl.textContent = `✕ Push failed`;
   }
