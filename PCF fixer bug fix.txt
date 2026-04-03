@@ -1,0 +1,45 @@
+
+## 1. Enhancements to Existing Tools
+
+### 1.1 Topology Graph Solver (PcfTopologyGraph_2.js)
+
+| # | Enhancement | Current State | Proposed Improvement |
+|---|-------------|---------------|----------------------|
+| 1.1.1 | **Tolerance presets** | Hardcoded gatekeeper values (0.1mm absolute, bore tolerance) | Add a UI panel with preset tolerance profiles: "Tight (3mm)", "Standard (6mm)", "Loose (25mm)", "Custom". Store per-project. |
+| 1.1.2 | **Pass progress feedback** | Passes run synchronously; no progress indicator | Add a progress bar or step counter ("Pass 1: Component 34/120") so the user sees real-time progress on large PCFs (500+ components). |
+| 1.1.3 | **Undo/Redo for fixing actions** | No undo. Once an action is approved/rejected, the only way back is manual text re-edit | Implement an undo stack in `store.js` (`pastStates[]`, `futureStates[]`) with Ctrl+Z / Ctrl+Y keybindings. |
+| 1.1.4 | **Batch approve/reject by type** | "Approve All" approves everything not marked `[No Auto fix]` | Add filter dropdowns: approve/reject only GAP_FILL, only GAP_SNAP_IMMUTABLE, only Insert Pipe, etc. |
+| 1.1.5 | **Solver diagnostics export** | Console logs only | Add "Export Diagnostics" button that downloads a JSON report of all gaps found, tolerances applied, and decisions made per pass. |
+
+### 1.2 3D Viewer Canvas (App2.jsx / Viewer3D.jsx)
+
+| # | Enhancement | Current State | Proposed Improvement |
+|---|-------------|---------------|----------------------|
+| 1.2.1 | **Selection highlighting** | Yellow emissive only (`#d97706`). Hard to see on yellow components (TEEs, VALVEs) | Add outline post-processing effect (Three.js `OutlinePass` or `EffectComposer`) for a clear selection halo regardless of base color. |
+| 1.2.2 | **Multi-select** | Single selection only (`selectedId: null \| string`) | Support `selectedIds: Set<string>` with Ctrl+Click to add/remove. Shift+Click for range selection in the data table. |
+| 1.2.3 | **Component labels in 3D** | No labels. User must click each component to identify it | Add toggleable HTML labels via `@react-three/drei Html` component showing Type + Index (e.g., "PIPE #4") positioned at component center. |
+| 1.2.4 | **Color legend overlay** | Colors are hardcoded per type but no legend is shown to the user | Add a collapsible color legend panel (bottom-left) showing each component type with its color swatch. |
+| 1.2.5 | **Measurement tool** | No distance measurement between arbitrary points | Add a "Measure" mode: click two points to display a dimension line with distance in mm. |
+| 1.2.6 | **Section clipping plane** | No clipping | Add an interactive clipping plane (slider-controlled) to slice through dense piping and reveal internals. |
+| 1.2.7 | **Camera presets with memory** | Only "Auto Center" and "Zoom Selected" | Add named camera bookmarks: save current view → recall by name (e.g., "Header View", "Tie-in Detail"). |
+
+### 1.3 Control Panel (3d_smart_fixer_controlpanel.jsx)
+
+| # | Enhancement | Current State | Proposed Improvement |
+|---|-------------|---------------|----------------------|
+| 1.3.1 | **Resizable panel** | Fixed 320px width, no resize | Make panel width draggable (CSS `resize: horizontal` or a drag handle). |
+| 1.3.2 | **Search/filter gaps** | Gaps listed sequentially. Hard to find specific gap in large lists | Add a search box at top of "Proposed Gaps" section to filter by gap #, type, or action text. |
+| 1.3.3 | **Inline coordinate display** | Only shows ID and Fixing Action in property panel | Show EP1, EP2 coordinates, bore, and length directly in the properties section. |
+| 1.3.4 | **Component navigation arrows** | Must click in 3D or table to change selection | Add Previous/Next buttons in the property panel to cycle through components sequentially. |
+
+### 1.4 Data Table (3d_smart_fixer_datatable.jsx)
+
+| # | Enhancement | Current State | Proposed Improvement |
+|---|-------------|---------------|----------------------|
+| 1.4.1 | **Column sorting** | No sorting. Components listed in parse order | Add click-to-sort on every column header (ascending/descending toggle). |
+| 1.4.2 | **Column filtering** | No filtering | Add per-column filter inputs (text match for strings, range for numerics). |
+| 1.4.3 | **Column resizing** | Fixed column widths | Add draggable column borders for user-controlled widths. |
+| 1.4.4 | **Row grouping by Line Key** | Flat list | Add collapsible row groups by Line Key with summary counts (components per line, gaps per line). |
+| 1.4.5 | **Export to CSV/Excel** | Only PCF download | Add "Export Table to CSV" button for external analysis. |
+| 1.4.6 | **Freeze columns** | Horizontal scroll loses context of first columns | Freeze # and Type columns on horizontal scroll (sticky left). |
+

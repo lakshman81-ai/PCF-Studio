@@ -1,0 +1,415 @@
+#	Stage	Event	RefNo	Detail
+1	S1	row-grouped	67133182/3149	rawType:BRAN  rowCount:2
+2	S1	component-built	67133182/3149	canonType:PIPE  bore:300  ep1:{"x":1145515.978,"y":1034562.421,"z":104663.129}  ep2:{"x":1158098.729,"y":1035251.456,"z":103838.265}  cp:null  bp:null
+3	S1	row-grouped	67141374/1620	rawType:FLAN  rowCount:2
+4	S1	component-built	67141374/1620	canonType:FLANGE  bore:300  ep1:{"x":1145515.978,"y":1034562.421,"z":104663.129}  ep2:{"x":1145515.978,"y":1034677.42,"z":104662.584}  cp:null  bp:null
+5	S1	row-grouped	67141374/1619	rawType:GASK  rowCount:2
+6	S1	component-built	67141374/1619	canonType:GASK  bore:300  ep1:{"x":1145515.978,"y":1034677.42,"z":104662.584}  ep2:{"x":1145515.978,"y":1034680.42,"z":104662.57}  cp:null  bp:null
+7	S1	row-grouped	67141374/1618	rawType:FLAN  rowCount:2
+8	S1	component-built	67141374/1618	canonType:FLANGE  bore:300  ep1:{"x":1145515.978,"y":1034680.42,"z":104662.57}  ep2:{"x":1145515.978,"y":1034795.419,"z":104662.025}  cp:null  bp:null
+9	S1	row-grouped	67133182/4841	rawType:ELBO  rowCount:3
+10	S1	component-built	67133182/4841	canonType:BEND  bore:300  ep1:{"x":1145515.978,"y":1034795.419,"z":104662.025}  ep2:{"x":1145972.976,"y":1035252.414,"z":104659.402}  cp:{"x":1145515.976,"y":1035252.414,"z":104659.859}  bp:null
+11	S1	row-grouped	67133182/8639	rawType:ANCI  rowCount:1
+12	S1	component-built	67133182/8639	canonType:SUPPORT  bore:300  ep1:null  ep2:null  cp:{"x":1148776.804,"y":1035252.414,"z":104656.598}  bp:null
+13	S1	row-grouped	67149566/141	rawType:ANCI  rowCount:1
+14	S1	component-built	67149566/141	canonType:SUPPORT  bore:300  ep1:null  ep2:null  cp:{"x":1148809.502,"y":1035252.414,"z":104656.566}  bp:null
+15	S1	row-grouped	67133182/8250	rawType:ELBO  rowCount:3
+16	S1	component-built	67133182/8250	canonType:BEND  bore:300  ep1:{"x":1157098.909,"y":1035252.414,"z":104648.275}  ep2:{"x":1157423.259,"y":1035252.236,"z":104513.735}  cp:{"x":1157288.909,"y":1035252.414,"z":104648.085}  bp:null
+17	S1	row-grouped	67141374/1621	rawType:BRAN  rowCount:2
+18	S1	component-built	67141374/1621	canonType:PIPE  bore:750  ep1:{"x":1027437.973,"y":1099400.634,"z":103589.458}  ep2:{"x":1024596.65,"y":1098257.634,"z":101932.987}  cp:null  bp:null
+19	S1	row-grouped	67133182/8397	rawType:ELBO  rowCount:3
+20	S1	component-built	67133182/8397	canonType:BEND  bore:750  ep1:{"x":1027437.973,"y":1099400.634,"z":103589.458}  ep2:{"x":1026294.975,"y":1098257.635,"z":103587.172}  cp:{"x":1027437.973,"y":1098257.635,"z":103588.315}  bp:null
+21	S1	row-grouped	67133182/6562	rawType:OLET  rowCount:4
+22	S1	component-built	67133182/6562	canonType:OLET  bore:750  ep1:{"x":1026294.973,"y":1098257.634,"z":103587.172}  ep2:{"x":1026294.973,"y":1098257.634,"z":103587.172}  cp:{"x":1026294.973,"y":1098257.634,"z":103587.172}  bp:{"x":1026294.667,"y":1097952.305,"z":103892.501}
+23	S1	row-grouped	67141374/2479	rawType:REDU  rowCount:2
+24	S1	component-built	67141374/2479	canonType:REDU  bore:750  ep1:{"x":1026119.659,"y":1098257.634,"z":103586.997}  ep2:{"x":1025509.736,"y":1098257.634,"z":103510.387}  cp:null  bp:null
+25	S1	row-grouped	67141374/1627	rawType:ELBO  rowCount:3
+26	S1	component-built	67141374/1627	canonType:BEND  bore:600  ep1:{"x":1025509.736,"y":1098257.634,"z":103510.387}  ep2:{"x":1024596.65,"y":1098257.634,"z":102596.387}  cp:{"x":1024596.65,"y":1098257.634,"z":103509.474}  bp:null
+27	S1	row-grouped	67141374/2180	rawType:REDU  rowCount:2
+28	S1	component-built	67141374/2180	canonType:REDU  bore:600  ep1:{"x":1024596.65,"y":1098257.634,"z":102596.387}  ep2:{"x":1024596.65,"y":1098257.634,"z":102088.387}  cp:null  bp:null
+29	S1	row-grouped	67141374/1628	rawType:FLAN  rowCount:2
+30	S1	component-built	67141374/1628	canonType:FLANGE  bore:400  ep1:{"x":1024596.65,"y":1098257.634,"z":102088.387}  ep2:{"x":1024596.65,"y":1098257.634,"z":101961.387}  cp:null  bp:null
+31	S1	row-grouped	67141374/1629	rawType:GASK  rowCount:2
+32	S1	component-built	67141374/1629	canonType:GASK  bore:400  ep1:{"x":1024596.65,"y":1098257.634,"z":101961.387}  ep2:{"x":1024596.65,"y":1098257.634,"z":101958.387}  cp:null  bp:null
+33	S1	row-grouped	67141374/1630	rawType:PCOM  rowCount:2
+34	S1	component-built	67141374/1630	canonType:PCOM  bore:400  ep1:{"x":1024596.65,"y":1098257.634,"z":101958.387}  ep2:{"x":1024596.65,"y":1098257.634,"z":101935.987}  cp:null  bp:null
+35	S1	row-grouped	67141374/1631	rawType:GASK  rowCount:2
+36	S1	component-built	67141374/1631	canonType:GASK  bore:400  ep1:{"x":1024596.65,"y":1098257.634,"z":101935.987}  ep2:{"x":1024596.65,"y":1098257.634,"z":101932.987}  cp:null  bp:null
+37	S1	row-grouped	67133182/3062	rawType:BRAN  rowCount:2
+38	S1	component-built	67133182/3062	canonType:PIPE  bore:100  ep1:{"x":1026294.236,"y":1092302.324,"z":104349.989}  ep2:{"x":1026294.973,"y":1098257.634,"z":103587.172}  cp:null  bp:null
+39	S1	row-grouped	67133182/3272	rawType:BEND  rowCount:3
+40	S1	component-built	67133182/3272	canonType:BEND  bore:100  ep1:{"x":1026294.236,"y":1092302.324,"z":104349.989}  ep2:{"x":1026294.236,"y":1092302.324,"z":104349.989}  cp:{"x":1026294.236,"y":1092302.324,"z":104349.989}  bp:null
+41	S1	row-grouped	67133182/3248	rawType:FLAN  rowCount:2
+42	S1	component-built	67133182/3248	canonType:FLANGE  bore:100  ep1:{"x":1026294.236,"y":1092302.324,"z":104349.989}  ep2:{"x":1026294.236,"y":1092379.323,"z":104349.604}  cp:null  bp:null
+43	S1	row-grouped	67133182/3065	rawType:GASK  rowCount:2
+44	S1	component-built	67133182/3065	canonType:GASK  bore:100  ep1:{"x":1026294.236,"y":1092379.323,"z":104349.604}  ep2:{"x":1026294.236,"y":1092382.323,"z":104349.589}  cp:null  bp:null
+45	S1	row-grouped	67133182/3064	rawType:FLAN  rowCount:2
+46	S1	component-built	67133182/3064	canonType:FLANGE  bore:100  ep1:{"x":1026294.236,"y":1092382.323,"z":104349.589}  ep2:{"x":1026294.236,"y":1092459.322,"z":104349.204}  cp:null  bp:null
+47	S1	row-grouped	67133182/6634	rawType:ANCI  rowCount:1
+48	S1	component-built	67133182/6634	canonType:SUPPORT  bore:100  ep1:null  ep2:null  cp:{"x":1026294.236,"y":1096382.273,"z":104329.588}  bp:null
+49	S1	row-grouped	67133182/3198	rawType:ELBO  rowCount:3
+50	S1	component-built	67133182/3198	canonType:BEND  bore:100  ep1:{"x":1026294.236,"y":1097456.913,"z":104324.214}  ep2:{"x":1026294.236,"y":1097566.167,"z":104278.639}  cp:{"x":1026294.236,"y":1097520.912,"z":104323.893}  bp:null
+51	S1	row-grouped	67133182/6325	rawType:BRAN  rowCount:2
+52	S1	component-built	67133182/6325	canonType:PIPE  bore:750  ep1:{"x":1158098.723,"y":1033618.362,"z":103845.534}  ep2:{"x":1027437.973,"y":1099400.634,"z":103589.458}  cp:null  bp:null
+53	S1	row-grouped	67133182/6326	rawType:FBLI  rowCount:2
+54	S1	component-built	67133182/6326	canonType:FBLI  bore:750  ep1:{"x":1158098.729,"y":1033618.356,"z":103839.899}  ep2:{"x":1158098.729,"y":1033693.456,"z":103839.823}  cp:null  bp:null
+55	S1	row-grouped	67133182/6327	rawType:GASK  rowCount:2
+56	S1	component-built	67133182/6327	canonType:GASK  bore:750  ep1:{"x":1158098.729,"y":1033693.456,"z":103839.823}  ep2:{"x":1158098.729,"y":1033696.456,"z":103839.82}  cp:null  bp:null
+57	S1	row-grouped	67133182/6328	rawType:FLAN  rowCount:2
+58	S1	component-built	67133182/6328	canonType:FLANGE  bore:750  ep1:{"x":1158098.729,"y":1033696.456,"z":103839.82}  ep2:{"x":1158098.729,"y":1033833.456,"z":103839.683}  cp:null  bp:null
+59	S1	row-grouped	67133182/6329	rawType:TEE  rowCount:4
+60	S1	component-built	67133182/6329	canonType:TEE  bore:750  ep1:{"x":1158098.729,"y":1033833.384,"z":103839.683}  ep2:{"x":1158098.729,"y":1034951.383,"z":103838.565}  cp:{"x":1158098.729,"y":1034392.383,"z":103839.124}  bp:{"x":1158440.262,"y":1034392.725,"z":104180.657}
+61	S1	row-grouped	67133182/8246	rawType:OLET  rowCount:4
+62	S1	component-built	67133182/8246	canonType:OLET  bore:750  ep1:{"x":1158098.729,"y":1035251.456,"z":103838.265}  ep2:{"x":1158098.729,"y":1035251.456,"z":103838.265}  cp:{"x":1158098.729,"y":1035251.456,"z":103838.265}  bp:{"x":1157768.581,"y":1035251.786,"z":104168.413}
+63	S1	row-grouped	67141374/2486	rawType:ANCI  rowCount:1
+64	S1	component-built	67141374/2486	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1158098.729,"y":1037180.239,"z":103836.336}  bp:null
+65	S1	row-grouped	67133182/8396	rawType:ELBO  rowCount:3
+66	S1	component-built	67133182/8396	canonType:BEND  bore:750  ep1:{"x":1158098.729,"y":1041649.001,"z":103831.867}  ep2:{"x":1156955.731,"y":1042791.999,"z":103829.581}  cp:{"x":1158098.729,"y":1042791.999,"z":103830.724}  bp:null
+67	S1	row-grouped	67141374/2483	rawType:ANCI  rowCount:1
+68	S1	component-built	67141374/2483	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1156098.724,"y":1042791.999,"z":103828.724}  bp:null
+69	S1	row-grouped	67133182/8395	rawType:ELBO  rowCount:3
+70	S1	component-built	67133182/8395	canonType:BEND  bore:750  ep1:{"x":1149536.249,"y":1042791.999,"z":103822.161}  ep2:{"x":1148393.251,"y":1043934.997,"z":103819.875}  cp:{"x":1148393.251,"y":1042791.999,"z":103821.018}  bp:null
+71	S1	row-grouped	67141374/2561	rawType:ANCI  rowCount:1
+72	S1	component-built	67141374/2561	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1148393.251,"y":1044392.004,"z":103819.418}  bp:null
+73	S1	row-grouped	67141374/2564	rawType:ANCI  rowCount:1
+74	S1	component-built	67141374/2564	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1148393.251,"y":1058391.997,"z":103805.417}  bp:null
+75	S1	row-grouped	67141374/2567	rawType:ANCI  rowCount:1
+76	S1	component-built	67141374/2567	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1148393.251,"y":1072391.99,"z":103791.416}  bp:null
+77	S1	row-grouped	67141374/2570	rawType:ANCI  rowCount:1
+78	S1	component-built	67141374/2570	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1148393.251,"y":1081792,"z":103782.015}  bp:null
+79	S1	row-grouped	67141374/2573	rawType:ANCI  rowCount:1
+80	S1	component-built	67141374/2573	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1148393.251,"y":1097391.977,"z":103766.414}  bp:null
+81	S1	row-grouped	67133182/6333	rawType:ELBO  rowCount:3
+82	S1	component-built	67133182/6333	canonType:BEND  bore:750  ep1:{"x":1148393.251,"y":1098626.549,"z":103765.179}  ep2:{"x":1147250.252,"y":1099769.547,"z":103762.893}  cp:{"x":1148393.251,"y":1099769.547,"z":103764.036}  bp:null
+83	S1	row-grouped	67141374/2498	rawType:ANCI  rowCount:1
+84	S1	component-built	67141374/2498	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1141693.248,"y":1099769.547,"z":103757.336}  bp:null
+85	S1	row-grouped	67133182/8651	rawType:ANCI  rowCount:1
+86	S1	component-built	67133182/8651	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1132587.995,"y":1099769.547,"z":103748.23}  bp:null
+87	S1	row-grouped	67141374/2639	rawType:ELBO  rowCount:3
+88	S1	component-built	67141374/2639	canonType:BEND  bore:750  ep1:{"x":1132133.102,"y":1099769.547,"z":103747.775}  ep2:{"x":1130990.103,"y":1100912.545,"z":103745.489}  cp:{"x":1130990.103,"y":1099769.547,"z":103746.632}  bp:null
+89	S1	row-grouped	67133182/8654	rawType:ANCI  rowCount:1
+90	S1	component-built	67133182/8654	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1130990.103,"y":1107269.543,"z":103739.131}  bp:null
+91	S1	row-grouped	67133182/8657	rawType:ANCI  rowCount:1
+92	S1	component-built	67133182/8657	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1130990.103,"y":1116322.23,"z":103730.078}  bp:null
+93	S1	row-grouped	67141374/2640	rawType:ELBO  rowCount:3
+94	S1	component-built	67141374/2640	canonType:BEND  bore:750  ep1:{"x":1130990.103,"y":1116779.231,"z":103729.621}  ep2:{"x":1129847.105,"y":1117922.229,"z":103727.335}  cp:{"x":1130990.103,"y":1117922.229,"z":103728.478}  bp:null
+95	S1	row-grouped	67133182/8660	rawType:ANCI  rowCount:1
+96	S1	component-built	67133182/8660	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1125490.106,"y":1117922.229,"z":103722.977}  bp:null
+97	S1	row-grouped	67133182/8603	rawType:ANCI  rowCount:1
+98	S1	component-built	67133182/8603	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1114025.073,"y":1117922.226,"z":103711.511}  bp:null
+99	S1	row-grouped	67133182/8606	rawType:ANCI  rowCount:1
+100	S1	component-built	67133182/8606	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1100982.118,"y":1117922.226,"z":103698.468}  bp:null
+101	S1	row-grouped	67141374/2641	rawType:ELBO  rowCount:3
+102	S1	component-built	67141374/2641	canonType:BEND  bore:750  ep1:{"x":1093058.16,"y":1117922.226,"z":103690.543}  ep2:{"x":1091915.161,"y":1119065.226,"z":103689.4}  cp:{"x":1091915.161,"y":1117922.226,"z":103689.4}  bp:null
+103	S1	row-grouped	67133182/8609	rawType:ANCI  rowCount:1
+104	S1	component-built	67133182/8609	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1091915.161,"y":1119922.226,"z":103689.4}  bp:null
+105	S1	row-grouped	67133182/6334	rawType:ELBO  rowCount:3
+106	S1	component-built	67133182/6334	canonType:BEND  bore:750  ep1:{"x":1091915.161,"y":1122414.598,"z":103689.4}  ep2:{"x":1090772.161,"y":1123557.598,"z":103688.257}  cp:{"x":1091915.161,"y":1123557.598,"z":103689.4}  bp:null
+107	S1	row-grouped	67133182/8612	rawType:ANCI  rowCount:1
+108	S1	component-built	67133182/8612	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1082615.165,"y":1123557.598,"z":103680.099}  bp:null
+109	S1	row-grouped	67133182/8672	rawType:ANCI  rowCount:1
+110	S1	component-built	67133182/8672	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1065115.174,"y":1123557.598,"z":103662.598}  bp:null
+111	S1	row-grouped	67133182/8675	rawType:ANCI  rowCount:1
+112	S1	component-built	67133182/8675	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1048877.838,"y":1123557.598,"z":103646.359}  bp:null
+113	S1	row-grouped	67133182/8678	rawType:ANCI  rowCount:1
+114	S1	component-built	67133182/8678	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1034678.189,"y":1123557.598,"z":103632.159}  bp:null
+115	S1	row-grouped	67133182/8633	rawType:ANCI  rowCount:1
+116	S1	component-built	67133182/8633	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1023335.602,"y":1123557.598,"z":103620.815}  bp:null
+117	S1	row-grouped	67133182/6336	rawType:ELBO  rowCount:3
+118	S1	component-built	67133182/6336	canonType:BEND  bore:750  ep1:{"x":1022780.775,"y":1123557.598,"z":103620.26}  ep2:{"x":1021637.777,"y":1122414.599,"z":103617.974}  cp:{"x":1021637.777,"y":1123557.598,"z":103619.117}  bp:null
+119	S1	row-grouped	67133182/8420	rawType:ANCI  rowCount:1
+120	S1	component-built	67133182/8420	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1021637.777,"y":1112701.929,"z":103608.261}  bp:null
+121	S1	row-grouped	67133182/6337	rawType:ELBO  rowCount:3
+122	S1	component-built	67133182/6337	canonType:BEND  bore:750  ep1:{"x":1021637.777,"y":1105844.925,"z":103601.403}  ep2:{"x":1022780.775,"y":1104701.926,"z":103599.117}  cp:{"x":1021637.777,"y":1104701.926,"z":103600.26}  bp:null
+123	S1	row-grouped	67133182/8423	rawType:ANCI  rowCount:1
+124	S1	component-built	67133182/8423	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1023591.525,"y":1104701.926,"z":103598.306}  bp:null
+125	S1	row-grouped	67133182/6561	rawType:ELBO  rowCount:3
+126	S1	component-built	67133182/6561	canonType:BEND  bore:750  ep1:{"x":1026294.975,"y":1104701.926,"z":103595.903}  ep2:{"x":1027437.973,"y":1103558.928,"z":103593.617}  cp:{"x":1027437.973,"y":1104701.926,"z":103594.76}  bp:null
+127	S1	row-grouped	67133182/8426	rawType:ANCI  rowCount:1
+128	S1	component-built	67133182/8426	canonType:SUPPORT  bore:750  ep1:null  ep2:null  cp:{"x":1027437.973,"y":1099757.63,"z":103589.815}  bp:null
+129	S2	excluded		type:PIPE
+130	S2	retained	67141374/1620	type:FLANGE
+131	S2	excluded	67141374/1619	type:GASK
+132	S2	retained	67141374/1618	type:FLANGE
+133	S2	retained	67133182/4841	type:BEND
+134	S2	retained	67133182/8639	type:SUPPORT
+135	S2	stub-injected	67133182/8639	dir:UP  bore:300  len:1
+136	S2	retained	67149566/141	type:SUPPORT
+137	S2	stub-injected	67149566/141	dir:UP  bore:300  len:1
+138	S2	retained	67133182/8250	type:BEND
+139	S2	excluded		type:PIPE
+140	S2	retained	67133182/8397	type:BEND
+141	S2	retained	67133182/6562	type:OLET
+142	S2	retained	67141374/2479	type:REDU
+143	S2	retained	67141374/1627	type:BEND
+144	S2	retained	67141374/2180	type:REDU
+145	S2	retained	67141374/1628	type:FLANGE
+146	S2	excluded	67141374/1629	type:GASK
+147	S2	excluded	67141374/1630	type:PCOM
+148	S2	excluded	67141374/1631	type:GASK
+149	S2	excluded		type:PIPE
+150	S2	retained	67133182/3272	type:BEND
+151	S2	retained	67133182/3248	type:FLANGE
+152	S2	excluded	67133182/3065	type:GASK
+153	S2	retained	67133182/3064	type:FLANGE
+154	S2	retained	67133182/6634	type:SUPPORT
+155	S2	stub-injected	67133182/6634	dir:UP  bore:750  len:1
+156	S2	retained	67133182/3198	type:BEND
+157	S2	excluded		type:PIPE
+158	S2	retained	67133182/6326	type:FBLI
+159	S2	excluded	67133182/6327	type:GASK
+160	S2	retained	67133182/6328	type:FLANGE
+161	S2	retained	67133182/6329	type:TEE
+162	S2	retained	67133182/8246	type:OLET
+163	S2	retained	67141374/2486	type:SUPPORT
+164	S2	stub-injected	67141374/2486	dir:UP  bore:750  len:1
+165	S2	retained	67133182/8396	type:BEND
+166	S2	retained	67141374/2483	type:SUPPORT
+167	S2	stub-injected	67141374/2483	dir:UP  bore:300  len:1
+168	S2	retained	67133182/8395	type:BEND
+169	S2	retained	67141374/2561	type:SUPPORT
+170	S2	stub-injected	67141374/2561	dir:UP  bore:300  len:1
+171	S2	retained	67141374/2564	type:SUPPORT
+172	S2	stub-injected	67141374/2564	dir:UP  bore:300  len:1
+173	S2	retained	67141374/2567	type:SUPPORT
+174	S2	stub-injected	67141374/2567	dir:UP  bore:300  len:1
+175	S2	retained	67141374/2570	type:SUPPORT
+176	S2	stub-injected	67141374/2570	dir:UP  bore:300  len:1
+177	S2	retained	67141374/2573	type:SUPPORT
+178	S2	stub-injected	67141374/2573	dir:UP  bore:300  len:1
+179	S2	retained	67133182/6333	type:BEND
+180	S2	retained	67141374/2498	type:SUPPORT
+181	S2	stub-injected	67141374/2498	dir:UP  bore:750  len:1
+182	S2	retained	67133182/8651	type:SUPPORT
+183	S2	stub-injected	67133182/8651	dir:UP  bore:750  len:1
+184	S2	retained	67141374/2639	type:BEND
+185	S2	retained	67133182/8654	type:SUPPORT
+186	S2	stub-injected	67133182/8654	dir:UP  bore:750  len:1
+187	S2	retained	67133182/8657	type:SUPPORT
+188	S2	stub-injected	67133182/8657	dir:UP  bore:750  len:1
+189	S2	retained	67141374/2640	type:BEND
+190	S2	retained	67133182/8660	type:SUPPORT
+191	S2	stub-injected	67133182/8660	dir:UP  bore:750  len:1
+192	S2	retained	67133182/8603	type:SUPPORT
+193	S2	stub-injected	67133182/8603	dir:UP  bore:750  len:1
+194	S2	retained	67133182/8606	type:SUPPORT
+195	S2	stub-injected	67133182/8606	dir:UP  bore:750  len:1
+196	S2	retained	67141374/2641	type:BEND
+197	S2	retained	67133182/8609	type:SUPPORT
+198	S2	stub-injected	67133182/8609	dir:UP  bore:750  len:1
+199	S2	retained	67133182/6334	type:BEND
+200	S2	retained	67133182/8612	type:SUPPORT
+201	S2	stub-injected	67133182/8612	dir:UP  bore:750  len:1
+202	S2	retained	67133182/8672	type:SUPPORT
+203	S2	stub-injected	67133182/8672	dir:UP  bore:750  len:1
+204	S2	retained	67133182/8675	type:SUPPORT
+205	S2	stub-injected	67133182/8675	dir:UP  bore:750  len:1
+206	S2	retained	67133182/8678	type:SUPPORT
+207	S2	stub-injected	67133182/8678	dir:UP  bore:750  len:1
+208	S2	retained	67133182/8633	type:SUPPORT
+209	S2	stub-injected	67133182/8633	dir:UP  bore:750  len:1
+210	S2	retained	67133182/6336	type:BEND
+211	S2	retained	67133182/8420	type:SUPPORT
+212	S2	stub-injected	67133182/8420	dir:UP  bore:750  len:1
+213	S2	retained	67133182/6337	type:BEND
+214	S2	retained	67133182/8423	type:SUPPORT
+215	S2	stub-injected	67133182/8423	dir:UP  bore:750  len:1
+216	S2	retained	67133182/6561	type:BEND
+217	S2	retained	67133182/8426	type:SUPPORT
+218	S2	stub-injected	67133182/8426	dir:UP  bore:750  len:1
+219	S3-P0	gap-filled	67141374/1620	from:{"x":1145515.978,"y":1034680.42,"z":104662.57}  to:{"x":1145515.978,"y":1034680.42,"z":104662.57}  dist:3.000032666488796
+220	S3-P0	gap-filled	67133182/3248	from:{"x":1026294.236,"y":1092382.323,"z":104349.589}  to:{"x":1026294.236,"y":1092382.323,"z":104349.589}  dist:3.000037499765625
+221	S3-P0	gap-filled	67133182/6328	from:{"x":1158098.729,"y":1033693.456,"z":103839.823}  to:{"x":1158098.729,"y":1033693.456,"z":103839.823}  dist:3.0000014999996223
+222	S3-P0	pass-complete		filled:3
+223	S3-P1	olet-ep2-rearmed	67133182/6562	ep2Id:F12  dir:{"x":-0.8944272014124188,"y":-0.4472135746749515,"z":0}  partner:67133182/8397
+224	S3-P1	olet-ep2-rearmed	67133182/6329	ep2Id:F35  dir:{"x":0,"y":-1,"z":0}  partner:67133182/6328
+225	S3-P1A	early-exit	67141374/1620	reason:DE type, sibling connected  faceKey:ep1
+226	S3-P1A	ray-cast	67133182/4841	origin:{"x":1145972.976,"y":1035252.414,"z":104659.402}  dir:{"x":0.9999995000003751,"y":0,"z":-0.0009999994999891665}  method:axis-vector
+227	S3-P1A	hit	67133182/4841	target:67133182/8250  t:11125.93856403207  faceKey:ep1
+228	S3-P1A	ray-cast	67133182/8250	origin:{"x":1157423.259,"y":1035252.236,"z":104513.735}  dir:{"x":0.7071064708813384,"y":-0.0009368437051420871,"z":-0.7071064708808789}  method:axis-vector
+229	S3-P1A	hit	67133182/8250	target:67133182/8246  t:488.3592630548285  faceKey:bp
+230	S3-P1A	ray-cast	67133182/8397	origin:{"x":1027437.973,"y":1099400.634,"z":103589.458}  dir:{"x":0,"y":0.9999994999995001,"z":0.001000000374887249}  method:axis-vector
+231	S3-P1A	hit	67133182/8397	target:67133182/6561  t:4158.296079852475  faceKey:ep2
+232	S3-P1A	ray-cast	67133182/6562	origin:{"x":1026294.973,"y":1098257.634,"z":103587.172}  dir:{"x":-0.8944272014124188,"y":-0.4472135746749515,"z":0}  method:olet-passthrough
+233	S3-P1A	hit	67133182/6562	target:67141374/2479  t:156.80561038842845  faceKey:ep1
+234	S3-P1A	early-exit	67141374/1628	reason:DE type, sibling connected  faceKey:ep2
+235	S3-P1A	early-exit	67133182/3064	reason:DE type, sibling connected  faceKey:ep2
+236	S3-P1A	ray-cast	67133182/3198	origin:{"x":1026294.236,"y":1097456.913,"z":104324.214}  dir:{"x":0,"y":-0.9999874215971777,"z":0.0050156402809914975}  method:axis-vector
+237	S3-P1A	hit	67133182/3198	target:67133182/3064  t:4997.653479137897  faceKey:ep2
+238	S3-P1A	ray-cast	67133182/3198	origin:{"x":1026294.236,"y":1097566.167,"z":104278.639}  dir:{"x":0,"y":0.7071145937001679,"z":-0.7070989685866091}  method:axis-vector
+239	S3-P1A	hit	67133182/3198	target:67133182/6562  t:546.0815965143107  faceKey:bp
+240	S3-P1A	ray-cast	67133182/6326	origin:{"x":1158098.729,"y":1033618.356,"z":103839.899}  dir:{"x":0,"y":-0.9999994879445636,"z":0.001011983503125722}  method:axis-vector
+241	S3-P1A	ray-cast	67133182/6329	origin:{"x":1158098.729,"y":1034951.383,"z":103838.565}  dir:{"x":0,"y":-1,"z":0}  method:olet-passthrough
+242	S3-P1A	hit	67133182/6329	target:67133182/6326  t:1333.0270000000019  faceKey:ep1
+243	S3-P1A	ray-cast	67133182/8396	origin:{"x":1158098.729,"y":1041649.001,"z":103831.867}  dir:{"x":0,"y":-0.9999994999986251,"z":0.001000001249779015}  method:axis-vector
+244	S3-P1A	hit	67133182/8396	target:67133182/8246  t:6397.548199226742  faceKey:ep1
+245	S3-P1	olet-passthrough-armed	67133182/8246	targetId:F38  dir:{"x":0,"y":-0.9999994999292516,"z":0.0010000706209254266}
+246	S3-P1A	ray-cast	67133182/8396	origin:{"x":1156955.731,"y":1042791.999,"z":103829.581}  dir:{"x":-0.9999994999986251,"y":0,"z":-0.0010000012497788115}  method:axis-vector
+247	S3-P1A	hit	67133182/8396	target:67133182/8395  t:7419.485710257916  faceKey:ep1
+248	S3-P1A	ray-cast	67133182/8395	origin:{"x":1148393.251,"y":1043934.997,"z":103819.875}  dir:{"x":0,"y":0.9999994999986251,"z":-0.0010000012497789132}  method:axis-vector
+249	S3-P1A	ray-cast	67133182/6333	origin:{"x":1148393.251,"y":1098626.549,"z":103765.179}  dir:{"x":0,"y":-0.9999994999986251,"z":0.0010000012497917465}  method:axis-vector
+250	S3-P1A	ray-cast	67133182/6333	origin:{"x":1147250.252,"y":1099769.547,"z":103762.893}  dir:{"x":-0.9999994999995001,"y":0,"z":-0.0010000003748874527}  method:axis-vector
+251	S3-P1A	hit	67133182/6333	target:67141374/2639  t:15117.15755942325  faceKey:ep1
+252	S3-P1A	ray-cast	67141374/2639	origin:{"x":1130990.103,"y":1100912.545,"z":103745.489}  dir:{"x":0,"y":0.9999994999986251,"z":-0.001000001249779015}  method:axis-vector
+253	S3-P1A	hit	67141374/2639	target:67141374/2640  t:15866.693934655004  faceKey:ep1
+254	S3-P1A	ray-cast	67141374/2640	origin:{"x":1129847.105,"y":1117922.229,"z":103727.335}  dir:{"x":-0.9999994999986251,"y":0,"z":-0.001000001249779015}  method:axis-vector
+255	S3-P1A	ray-cast	67141374/2641	origin:{"x":1093058.16,"y":1117922.226,"z":103690.543}  dir:{"x":0.9999994999995001,"y":0,"z":0.001000000374900184}  method:axis-vector
+256	S3-P1A	ray-cast	67141374/2641	origin:{"x":1091915.161,"y":1119065.226,"z":103689.4}  dir:{"x":0,"y":1,"z":0}  method:axis-vector
+257	S3-P1A	hit	67141374/2641	target:67133182/6334  t:3349.371999999974  faceKey:ep1
+258	S3-P1A	ray-cast	67133182/6334	origin:{"x":1090772.161,"y":1123557.598,"z":103688.257}  dir:{"x":-0.999999500000375,"y":0,"z":-0.0009999994999972176}  method:axis-vector
+259	S3-P1A	ray-cast	67133182/6336	origin:{"x":1022780.775,"y":1123557.598,"z":103620.26}  dir:{"x":0.9999994999986251,"y":0,"z":0.0010000012497789132}  method:axis-vector
+260	S3-P1A	ray-cast	67133182/6336	origin:{"x":1021637.777,"y":1122414.599,"z":103617.974}  dir:{"x":0,"y":-0.9999994999995001,"z":-0.001000000374887249}  method:axis-vector
+261	S3-P1A	hit	67133182/6336	target:67133182/6337  t:16569.682286160813  faceKey:ep1
+262	S3-P1A	ray-cast	67133182/6337	origin:{"x":1022780.775,"y":1104701.926,"z":103599.117}  dir:{"x":0.9999994999986251,"y":0,"z":-0.0010000012497789132}  method:axis-vector
+263	S3-P1A	hit	67133182/6337	target:67133182/6561  t:3514.2014568991385  faceKey:ep1
+264	S3-P1A	early-exit	67141374/1620	reason:DE type, sibling connected  faceKey:ep1
+265	S3-P1A	early-exit	67141374/1628	reason:DE type, sibling connected  faceKey:ep2
+266	S3-P1A	ray-cast	67133182/8246	origin:{"x":1158098.729,"y":1035251.456,"z":103838.265}  dir:{"x":0,"y":-0.9999994999292516,"z":0.0010000706209254266}  method:olet-passthrough
+267	S3-P1A	ray-cast	67133182/8395	origin:{"x":1148393.251,"y":1043934.997,"z":103819.875}  dir:{"x":0,"y":0.9999994999986251,"z":-0.0010000012497789132}  method:axis-vector
+268	S3-P1A	ray-cast	67133182/6333	origin:{"x":1148393.251,"y":1098626.549,"z":103765.179}  dir:{"x":0,"y":-0.9999994999986251,"z":0.0010000012497917465}  method:axis-vector
+269	S3-P1A	ray-cast	67141374/2640	origin:{"x":1129847.105,"y":1117922.229,"z":103727.335}  dir:{"x":-0.9999994999986251,"y":0,"z":-0.001000001249779015}  method:axis-vector
+270	S3-P1A	ray-cast	67141374/2641	origin:{"x":1093058.16,"y":1117922.226,"z":103690.543}  dir:{"x":0.9999994999995001,"y":0,"z":0.001000000374900184}  method:axis-vector
+271	S3-P1A	ray-cast	67133182/6334	origin:{"x":1090772.161,"y":1123557.598,"z":103688.257}  dir:{"x":-0.999999500000375,"y":0,"z":-0.0009999994999972176}  method:axis-vector
+272	S3-P1A	ray-cast	67133182/6336	origin:{"x":1022780.775,"y":1123557.598,"z":103620.26}  dir:{"x":0.9999994999986251,"y":0,"z":0.0010000012497789132}  method:axis-vector
+273	S3-P1B	ray-cast	67141374/1620	dir:{"x":0,"y":-1,"z":0}  method:6ax-p1  tol:3
+274	S3-P1B	ray-cast	67133182/8395	dir:{"x":0,"y":1,"z":0}  method:6ax-p1  tol:3
+275	S3-P1B	ray-cast	67133182/6333	dir:{"x":0,"y":-1,"z":0}  method:6ax-p1  tol:3
+276	S3-P1B	ray-cast	67141374/2640	dir:{"x":-1,"y":0,"z":0}  method:6ax-p1  tol:3
+277	S3-P1B	ray-cast	67141374/2641	dir:{"x":1,"y":0,"z":0}  method:6ax-p1  tol:3
+278	S3-P1B	ray-cast	67133182/6334	dir:{"x":-1,"y":0,"z":0}  method:6ax-p1  tol:3
+279	S3-P1B	ray-cast	67133182/6336	dir:{"x":1,"y":0,"z":0}  method:6ax-p1  tol:3
+280	S3-P1C	ray-cast	67141374/1620	dir:{"x":0,"y":-1,"z":0}  method:6ax-p2  tol:12.5
+281	S3-P1C	ray-cast	67141374/1628	dir:{"x":0,"y":0,"z":-1}  method:6ax-p2  tol:12.5
+282	S3-P1C	ray-cast	67133182/8395	dir:{"x":0,"y":1,"z":0}  method:6ax-p2  tol:12.5
+283	S3-P1C	ray-cast	67133182/6333	dir:{"x":0,"y":-1,"z":0}  method:6ax-p2  tol:12.5
+284	S3-P1C	ray-cast	67141374/2640	dir:{"x":-1,"y":0,"z":0}  method:6ax-p2  tol:12.5
+285	S3-P1C	ray-cast	67141374/2641	dir:{"x":1,"y":0,"z":0}  method:6ax-p2  tol:12.5
+286	S3-P1C	ray-cast	67133182/6334	dir:{"x":-1,"y":0,"z":0}  method:6ax-p2  tol:12.5
+287	S3-P1C	ray-cast	67133182/6336	dir:{"x":1,"y":0,"z":0}  method:6ax-p2  tol:12.5
+288	S3-P1	pass-complete		bridged:14
+289	S3-P2	ray-cast	67133182/6329	origin:{"x":1158440.262,"y":1034392.725,"z":104180.657}  dir:{"x":0.7071066039261974,"y":0.0007080734760755936,"z":0.707106603926107}  cp:{"x":1158098.729,"y":1034392.383,"z":103839.124}
+290	S3-P2	miss	67133182/6329	origin:{"x":1158440.262,"y":1034392.725,"z":104180.657}
+291	S3-P2	pass-complete		resolved:0
+292	S3-P3	scanning	67141374/1620	faceKey:ep1  origin:{"x":1145515.978,"y":1034562.421,"z":104663.129}
+293	S3-P3	miss	67141374/1620	origin:{"x":1145515.978,"y":1034562.421,"z":104663.129}  faceKey:ep1
+294	S3-P3	scanning	67141374/1628	faceKey:ep2  origin:{"x":1024596.65,"y":1098257.634,"z":101961.387}
+295	S3-P3	miss	67141374/1628	origin:{"x":1024596.65,"y":1098257.634,"z":101961.387}  faceKey:ep2
+296	S3-P3	scanning	67133182/8246	faceKey:ep2  origin:{"x":1158098.729,"y":1035251.456,"z":103838.265}
+297	S3-P3	miss	67133182/8246	origin:{"x":1158098.729,"y":1035251.456,"z":103838.265}  faceKey:ep2
+298	S3-P3	scanning	67133182/8395	faceKey:ep2  origin:{"x":1148393.251,"y":1043934.997,"z":103819.875}
+299	S3-P3	miss	67133182/8395	origin:{"x":1148393.251,"y":1043934.997,"z":103819.875}  faceKey:ep2
+300	S3-P3	scanning	67133182/6333	faceKey:ep1  origin:{"x":1148393.251,"y":1098626.549,"z":103765.179}
+301	S3-P3	miss	67133182/6333	origin:{"x":1148393.251,"y":1098626.549,"z":103765.179}  faceKey:ep1
+302	S3-P3	scanning	67141374/2640	faceKey:ep2  origin:{"x":1129847.105,"y":1117922.229,"z":103727.335}
+303	S3-P3	miss	67141374/2640	origin:{"x":1129847.105,"y":1117922.229,"z":103727.335}  faceKey:ep2
+304	S3-P3	scanning	67141374/2641	faceKey:ep1  origin:{"x":1093058.16,"y":1117922.226,"z":103690.543}
+305	S3-P3	miss	67141374/2641	origin:{"x":1093058.16,"y":1117922.226,"z":103690.543}  faceKey:ep1
+306	S3-P3	scanning	67133182/6334	faceKey:ep2  origin:{"x":1090772.161,"y":1123557.598,"z":103688.257}
+307	S3-P3	miss	67133182/6334	origin:{"x":1090772.161,"y":1123557.598,"z":103688.257}  faceKey:ep2
+308	S3-P3	scanning	67133182/6336	faceKey:ep1  origin:{"x":1022780.775,"y":1123557.598,"z":103620.26}
+309	S3-P3	miss	67133182/6336	origin:{"x":1022780.775,"y":1123557.598,"z":103620.26}  faceKey:ep1
+310	S3-P3	pass-complete		bridged:0
+311	S4	pipe-skipped		
+312	S4	component-emitted	67141374/1620	type:FLANGE  seq:1
+313	S4	non-fitting-skipped	67141374/1619	type:GASK
+314	S4	component-emitted	67141374/1618	type:FLANGE  seq:2
+315	S4	component-emitted	67133182/4841	type:BEND  seq:3
+316	S4	bridge-split-pipe	67133182/4841	ep1:{"x":1145972.976,"y":1035252.414,"z":104659.402}  ep2:{"x":1148776.8039999031,"y":1035252.414,"z":104656.59790310719}  bore:300  toSupport:67133182/8639
+317	S4	support-inline-emitted	67133182/8639	
+318	S4	bridge-split-pipe	67133182/4841	ep1:{"x":1148776.8039999031,"y":1035252.414,"z":104656.59790310719}  ep2:{"x":1148809.501999202,"y":1035252.414,"z":104656.56520197209}  bore:300  toSupport:67149566/141
+319	S4	support-inline-emitted	67149566/141	
+320	S4	bridge-split-tail	67133182/4841	ep1:{"x":1148809.501999202,"y":1035252.414,"z":104656.56520197209}  ep2:{"x":1157098.909,"y":1035252.414,"z":104648.275}  bore:300
+321	S4	support-inline-skip	67133182/8639	
+322	S4	support-inline-skip	67149566/141	
+323	S4	component-emitted	67133182/8250	type:BEND  seq:9
+324	S4	bridge-pipe-emitted	67133182/8250	ep1:{"x":1157423.259,"y":1035252.236,"z":104513.735}  ep2:{"x":1157768.581,"y":1035251.786,"z":104168.413}  bore:300  to:67133182/8246
+325	S4	pipe-skipped		
+326	S4	component-emitted	67133182/8397	type:BEND  seq:11
+327	S4	bridge-split-pipe	67133182/8397	ep1:{"x":1027437.973,"y":1099400.634,"z":103589.458}  ep2:{"x":1027437.973,"y":1099757.6299999433,"z":103589.81505661114}  bore:750  toSupport:67133182/8426
+328	S4	support-inline-emitted	67133182/8426	
+329	S4	bridge-split-tail	67133182/8397	ep1:{"x":1027437.973,"y":1099757.6299999433,"z":103589.81505661114}  ep2:{"x":1027437.973,"y":1103558.928,"z":103593.617}  bore:750
+330	S4	component-emitted	67133182/6562	type:OLET  seq:15
+331	S4	bridge-pipe-emitted	67133182/6562	ep1:{"x":1026294.973,"y":1098257.634,"z":103587.172}  ep2:{"x":1026119.659,"y":1098257.634,"z":103586.997}  bore:750  to:67141374/2479
+332	S4	component-emitted	67141374/2479	type:REDU  seq:17
+333	S4	component-emitted	67141374/1627	type:BEND  seq:18
+334	S4	component-emitted	67141374/2180	type:REDU  seq:19
+335	S4	component-emitted	67141374/1628	type:FLANGE  seq:20
+336	S4	non-fitting-skipped	67141374/1629	type:GASK
+337	S4	non-fitting-skipped	67141374/1630	type:PCOM
+338	S4	non-fitting-skipped	67141374/1631	type:GASK
+339	S4	pipe-skipped		
+340	S4	component-emitted	67133182/3272	type:BEND  seq:21
+341	S4	component-emitted	67133182/3248	type:FLANGE  seq:22
+342	S4	non-fitting-skipped	67133182/3065	type:GASK
+343	S4	component-emitted	67133182/3064	type:FLANGE  seq:23
+344	S4	support-emitted	67133182/6634	
+345	S4	component-emitted	67133182/3198	type:BEND  seq:25
+346	S4	bridge-split-pipe	67133182/3198	ep1:{"x":1026294.236,"y":1097456.913,"z":104324.214}  ep2:{"x":1026294.236,"y":1096382.2729981986,"z":104329.58763974864}  bore:100  toSupport:67133182/6634
+347	S4	support-inline-emitted	67133182/6634	
+348	S4	bridge-split-tail	67133182/3198	ep1:{"x":1026294.236,"y":1096382.2729981986,"z":104329.58763974864}  ep2:{"x":1026294.236,"y":1092459.322,"z":104349.204}  bore:100
+349	S4	bridge-pipe-emitted	67133182/3198	ep1:{"x":1026294.236,"y":1097566.167,"z":104278.639}  ep2:{"x":1026294.667,"y":1097952.305,"z":103892.501}  bore:100  to:67133182/6562
+350	S4	pipe-skipped		
+351	S4	component-emitted	67133182/6326	type:FBLI  seq:30
+352	S4	non-fitting-skipped	67133182/6327	type:GASK
+353	S4	component-emitted	67133182/6328	type:FLANGE  seq:31
+354	S4	component-emitted	67133182/6329	type:TEE  seq:32
+355	S4	bridge-pipe-emitted	67133182/6329	ep1:{"x":1158098.729,"y":1034951.383,"z":103838.565}  ep2:{"x":1158098.729,"y":1033618.356,"z":103839.899}  bore:750  to:67133182/6326
+356	S4	component-emitted	67133182/8246	type:OLET  seq:34
+357	S4	support-emitted	67141374/2486	
+358	S4	component-emitted	67133182/8396	type:BEND  seq:36
+359	S4	bridge-split-pipe	67133182/8396	ep1:{"x":1158098.729,"y":1041649.001,"z":103831.867}  ep2:{"x":1158098.729,"y":1037180.2390000798,"z":103836.33607982288}  bore:750  toSupport:67141374/2486
+360	S4	support-inline-emitted	67141374/2486	
+361	S4	bridge-split-tail	67133182/8396	ep1:{"x":1158098.729,"y":1037180.2390000798,"z":103836.33607982288}  ep2:{"x":1158098.729,"y":1035251.456,"z":103838.265}  bore:750
+362	S4	bridge-split-pipe	67133182/8396	ep1:{"x":1156955.731,"y":1042791.999,"z":103829.581}  ep2:{"x":1156098.7240000668,"y":1042791.999,"z":103828.7239331671}  bore:750  toSupport:67141374/2483
+363	S4	support-inline-emitted	67141374/2483	
+364	S4	bridge-split-tail	67133182/8396	ep1:{"x":1156098.7240000668,"y":1042791.999,"z":103828.7239331671}  ep2:{"x":1149536.249,"y":1042791.999,"z":103822.161}  bore:750
+365	S4	support-inline-skip	67141374/2483	
+366	S4	component-emitted	67133182/8395	type:BEND  seq:43
+367	S4	support-emitted	67141374/2561	
+368	S4	support-emitted	67141374/2564	
+369	S4	support-emitted	67141374/2567	
+370	S4	support-emitted	67141374/2570	
+371	S4	support-emitted	67141374/2573	
+372	S4	component-emitted	67133182/6333	type:BEND  seq:49
+373	S4	bridge-split-pipe	67133182/6333	ep1:{"x":1147250.252,"y":1099769.547,"z":103762.893}  ep2:{"x":1141693.2480003163,"y":1099769.547,"z":103757.3356835437}  bore:750  toSupport:67141374/2498
+374	S4	support-inline-emitted	67141374/2498	
+375	S4	bridge-split-pipe	67133182/6333	ep1:{"x":1141693.2480003163,"y":1099769.547,"z":103757.3356835437}  ep2:{"x":1132587.9950000816,"y":1099769.547,"z":103748.22991857759}  bore:750  toSupport:67133182/8651
+376	S4	support-inline-emitted	67133182/8651	
+377	S4	bridge-split-tail	67133182/6333	ep1:{"x":1132587.9950000816,"y":1099769.547,"z":103748.22991857759}  ep2:{"x":1132133.102,"y":1099769.547,"z":103747.775}  bore:750
+378	S4	support-inline-skip	67141374/2498	
+379	S4	support-inline-skip	67133182/8651	
+380	S4	component-emitted	67141374/2639	type:BEND  seq:55
+381	S4	bridge-split-pipe	67141374/2639	ep1:{"x":1130990.103,"y":1100912.545,"z":103745.489}  ep2:{"x":1130990.103,"y":1107269.5430004757,"z":103739.13147554458}  bore:750  toSupport:67133182/8654
+382	S4	support-inline-emitted	67133182/8654	
+383	S4	bridge-split-pipe	67141374/2639	ep1:{"x":1130990.103,"y":1107269.5430004757,"z":103739.13147554458}  ep2:{"x":1130990.103,"y":1116322.2300000389,"z":103730.0780388465}  bore:750  toSupport:67133182/8657
+384	S4	support-inline-emitted	67133182/8657	
+385	S4	bridge-split-tail	67141374/2639	ep1:{"x":1130990.103,"y":1116322.2300000389,"z":103730.0780388465}  ep2:{"x":1130990.103,"y":1116779.231,"z":103729.621}  bore:750
+386	S4	support-inline-skip	67133182/8654	
+387	S4	support-inline-skip	67133182/8657	
+388	S4	component-emitted	67141374/2640	type:BEND  seq:61
+389	S4	support-emitted	67133182/8660	
+390	S4	support-emitted	67133182/8603	
+391	S4	support-emitted	67133182/8606	
+392	S4	component-emitted	67141374/2641	type:BEND  seq:65
+393	S4	bridge-split-pipe	67141374/2641	ep1:{"x":1091915.161,"y":1119065.226,"z":103689.4}  ep2:{"x":1091915.161,"y":1119922.226,"z":103689.4}  bore:750  toSupport:67133182/8609
+394	S4	support-inline-emitted	67133182/8609	
+395	S4	bridge-split-tail	67141374/2641	ep1:{"x":1091915.161,"y":1119922.226,"z":103689.4}  ep2:{"x":1091915.161,"y":1122414.598,"z":103689.4}  bore:750
+396	S4	support-inline-skip	67133182/8609	
+397	S4	component-emitted	67133182/6334	type:BEND  seq:69
+398	S4	support-emitted	67133182/8612	
+399	S4	support-emitted	67133182/8672	
+400	S4	support-emitted	67133182/8675	
+401	S4	support-emitted	67133182/8678	
+402	S4	support-emitted	67133182/8633	
+403	S4	component-emitted	67133182/6336	type:BEND  seq:75
+404	S4	bridge-split-pipe	67133182/6336	ep1:{"x":1021637.777,"y":1122414.599,"z":103617.974}  ep2:{"x":1021637.777,"y":1112701.9290004473,"z":103608.26055273709}  bore:750  toSupport:67133182/8420
+405	S4	support-inline-emitted	67133182/8420	
+406	S4	bridge-split-tail	67133182/6336	ep1:{"x":1021637.777,"y":1112701.9290004473,"z":103608.26055273709}  ep2:{"x":1021637.777,"y":1105844.925,"z":103601.403}  bore:750
+407	S4	support-inline-skip	67133182/8420	
+408	S4	component-emitted	67133182/6337	type:BEND  seq:79
+409	S4	bridge-split-pipe	67133182/6337	ep1:{"x":1022780.775,"y":1104701.926,"z":103599.117}  ep2:{"x":1023591.5250635705,"y":1104701.926,"z":103598.37550813718}  bore:750  toSupport:67133182/8423
+410	S4	support-inline-emitted	67133182/8423	
+411	S4	bridge-split-tail	67133182/6337	ep1:{"x":1023591.5250635705,"y":1104701.926,"z":103598.37550813718}  ep2:{"x":1026294.975,"y":1104701.926,"z":103595.903}  bore:750
+412	S4	support-inline-skip	67133182/8423	
+413	S4	component-emitted	67133182/6561	type:BEND  seq:83
+414	S4	support-inline-skip	67133182/8426	
