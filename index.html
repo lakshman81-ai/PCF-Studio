@@ -62,6 +62,15 @@
       </svg>
       PCF Fixer
     </button>
+    <!-- Coordinates→PCF: crosshair pin -->
+    <button class="nav-btn" id="rtab-coord2pcf" role="tab">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/>
+        <line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/>
+        <line x1="18" y1="12" x2="22" y2="12"/>
+      </svg>
+      Coord → PCF
+    </button>
       <div class="nav-header-inline">
       <div class="app-title">
         <svg class="logo-mark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -160,6 +169,117 @@
     <section id="panel-pcf-fixer" class="tab-panel" role="tabpanel">
       <!-- React root mount point for PCF-Fixer App -->
       <div id="pcf-fixer-react-root" style="flex:1;overflow:auto;display:flex;flex-direction:column"></div>
+    </section>
+
+    <!-- ⑤ COORDINATES → PCF TAB -->
+    <section id="panel-coord2pcf" class="tab-panel" role="tabpanel">
+      <div class="c2p-root">
+
+        <!-- ── Left Column: Input + Preview ─────────────────────────── -->
+        <div class="c2p-col-left">
+
+          <!-- Mode toggle -->
+          <div class="c2p-mode-bar">
+            <button class="c2p-mode-btn active" id="c2p-mode-text">✏️ Raw Text</button>
+            <button class="c2p-mode-btn" id="c2p-mode-csv">📊 CSV / Excel</button>
+            <button class="btn btn-sm c2p-mock-btn" id="c2p-btn-mock" title="Load sample AutoCAD data">🧪 Mock</button>
+          </div>
+
+          <!-- Text input panel -->
+          <div id="c2p-panel-text">
+            <textarea id="c2p-text-input" class="c2p-textarea"
+              placeholder="Paste AutoCAD LIST output here (LWPOLYLINE vertex list)…"></textarea>
+          </div>
+
+          <!-- CSV/Excel import panel (hidden by default) -->
+          <div id="c2p-panel-csv" style="display:none">
+            <div class="c2p-import-zone">
+              <button class="btn btn-secondary btn-sm" id="c2p-btn-import">📂 Import CSV / Excel</button>
+              <span class="c2p-import-hint">Columns: East, North, Up, SupportName, DE/BO, Remarks</span>
+              <input type="file" id="c2p-file-input" accept=".csv,.xlsx,.xls,.txt" style="display:none">
+            </div>
+          </div>
+
+          <!-- Parse to Table action -->
+          <div class="c2p-action-bar">
+            <button class="btn btn-secondary btn-sm" id="c2p-btn-parse">🔍 Parse to Table</button>
+            <span class="c2p-hint">Review coordinates below before generating PCF</span>
+          </div>
+
+          <!-- Preview table -->
+          <div id="c2p-preview-wrap" class="c2p-preview-wrap">
+            <p style="color:var(--text-muted);font-size:0.78rem;padding:0.5rem">No points parsed yet.</p>
+          </div>
+        </div>
+
+        <!-- ── Right Column: Options + PCF Output ────────────────────── -->
+        <div class="c2p-col-right">
+
+          <!-- Options panel -->
+          <div class="c2p-options">
+            <div class="c2p-options-title">⚙ Options</div>
+            <div class="c2p-options-grid">
+              <label>Bore (mm)</label>
+              <input type="number" id="c2p-bore" class="c2p-input" value="250" step="any">
+              <label>Coord Scale</label>
+              <input type="number" id="c2p-scale" class="c2p-input" value="1000" step="any" title="e.g. 1000 to convert meters to millimeters">
+              <label>Pipeline Ref</label>
+              <input type="text" id="c2p-pipeline-ref" class="c2p-input" placeholder="e.g. 12-HC-1234">
+              <label>CA1 (Pressure)</label>
+              <input type="text" id="c2p-ca1"  class="c2p-input" value="700 KPA">
+              <label>CA2 (Temp)</label>
+              <input type="text" id="c2p-ca2"  class="c2p-input" value="120 C">
+              <label>CA3 (Material)</label>
+              <input type="text" id="c2p-ca3"  class="c2p-input" value="106">
+              <label>CA4 (Wall Thk)</label>
+              <input type="text" id="c2p-ca4"  class="c2p-input" value="9.53 MM">
+              <label>CA5 (Corr All)</label>
+              <input type="text" id="c2p-ca5"  class="c2p-input" value="0 MM">
+              <label>CA6 (Ins Den)</label>
+              <input type="text" id="c2p-ca6"  class="c2p-input" value="210 KG/M3">
+              <label>CA7</label>
+              <input type="text" id="c2p-ca7"  class="c2p-input" placeholder="—">
+              <label>CA8 (Weight)</label>
+              <input type="text" id="c2p-ca8"  class="c2p-input" placeholder="—">
+              <label>CA9 (Fluid Den)</label>
+              <input type="text" id="c2p-ca9"  class="c2p-input" value="1000 KG/M3">
+              <label>CA10 (Test P)</label>
+              <input type="text" id="c2p-ca10" class="c2p-input" value="1500 KPA">
+            </div>
+          </div>
+
+          <!-- Generate button -->
+          <div class="c2p-generate-bar">
+            <button class="btn btn-primary" id="c2p-btn-generate">▶ Generate PCF</button>
+            <button class="btn btn-secondary btn-sm" id="c2p-btn-copy" title="Copy to clipboard">📋 Copy</button>
+            <button class="btn btn-secondary btn-sm" id="c2p-btn-download" title="Download .pcf">⬇ Download</button>
+            <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.68rem;font-family:var(--font-code);color:var(--text-muted);margin-left:0.5rem;cursor:pointer;" title="Skip bend/tee geometry — emit raw pipe segments only (topology debug)">
+              <input type="checkbox" id="c2p-pipe-only" style="accent-color:var(--amber)"> Pipes Only
+            </label>
+          </div>
+
+
+          <!-- PCF output -->
+          <textarea id="c2p-pcf-output" class="c2p-output" readonly
+            placeholder="Generated PCF will appear here…"></textarea>
+
+          <!-- Status bar -->
+          <div id="c2p-status" class="c2p-status">Ready</div>
+        </div>
+
+      </div>
+
+      <!-- ── Collapsible Debug Panel ──────────────────────────────────── -->
+      <div class="c2p-debug">
+        <div class="c2p-debug-header" id="c2p-debug-header">
+          <span id="c2p-debug-toggle-icon">▶</span>
+          <span>Debug / Detection Log</span>
+          <span class="c2p-debug-hint">Bend · Tee · Support · Legend detection</span>
+        </div>
+        <div id="c2p-debug-body" class="c2p-debug-body">
+          <pre id="c2p-debug-log" class="c2p-debug-log"></pre>
+        </div>
+      </div>
     </section>
 
   </main>

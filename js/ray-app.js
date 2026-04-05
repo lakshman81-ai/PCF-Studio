@@ -9,14 +9,15 @@ import { initRayMasterData }   from './ray-tabs/ray-masterdata-tab.js';
 import { themeManager }        from './ui/theme-manager.js';
 import { APP_REVISION } from './ui/status-bar.js';
 
-const TABS = ['ray', 'viewer', 'masterdata', 'pcf-fixer'];
+const TABS = ['ray', 'viewer', 'masterdata', 'pcf-fixer', 'coord2pcf'];
 
 function switchTab(target) {
   const panelMap = {
     'ray': 'new-ray',
     'viewer': 'viewer',
     'masterdata': 'masterdata',
-    'pcf-fixer': 'pcf-fixer'
+    'pcf-fixer': 'pcf-fixer',
+    'coord2pcf': 'coord2pcf'
   };
   TABS.forEach(id => {
     document.getElementById(`rtab-${id}`)?.classList.toggle('active', id === target);
@@ -67,6 +68,12 @@ async function boot() {
       if (fixerRoot && !fixerRoot.textContent.trim()) {
         fixerRoot.innerHTML = `<div style="padding:1rem;color:var(--text-muted)">PCF Fixer failed to load in browser mode.</div>`;
       }
+    }
+    try {
+      const { initCoord2PcfTab } = await import('./coord2pcf/coord2pcf-tab.js');
+      initCoord2PcfTab();  // ⑤ Coordinates → PCF
+    } catch (err) {
+      console.warn('[RayApp] Coord2PCF tab failed to load:', err?.message || err);
     }
 
     // Status bar revision

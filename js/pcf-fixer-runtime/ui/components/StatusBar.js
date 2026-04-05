@@ -582,7 +582,7 @@ export function StatusBar({
       payload: msg
     });
   };
-  const verString = "Ver 24-03-2026 (1)";
+  const verString = "Ver 04-04-2026 (5)";
   const handleExecute = () => {
     setShowModal(false);
     const logger = createLogger();

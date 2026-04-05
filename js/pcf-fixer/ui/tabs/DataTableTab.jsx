@@ -765,6 +765,12 @@ export function DataTableTab({ stage = "1" }) {
   };
 
   const fmtCoord = (c) => c ? `${c.x?.toFixed(1)}, ${c.y?.toFixed(1)}, ${c.z?.toFixed(1)}` : '—';
+  const formatCaDisplayValue = (value) => {
+      if (value === undefined || value === null || value === '') return '—';
+      const text = String(value).trim();
+      const numericMatch = text.match(/^([+-]?(?:\d+(?:\.\d+)?|\.\d+))/);
+      return numericMatch ? numericMatch[1] : text;
+  };
   const getCellClass = (row, field) => {
     if (row._modified && row._modified[field]) {
         // Color coding based on pass
@@ -1128,7 +1134,7 @@ export function DataTableTab({ stage = "1" }) {
 
               {colVisible('cas') && [97,98,1,2,3,4,5,6,7,8,9,10].map(n => {
                   let caVal = row.ca && row.ca[n] ? row.ca[n] : row[`CA${n}`];
-                  return <td key={`ca${n}`} className="px-3 py-2 text-slate-500 border-r border-slate-200">{caVal || '—'}</td>;
+                  return <td key={`ca${n}`} className="px-3 py-2 text-slate-500 border-r border-slate-200">{formatCaDisplayValue(caVal)}</td>;
               })}
             </tr>
           )})}

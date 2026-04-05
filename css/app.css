@@ -1943,3 +1943,319 @@ body {
 }
 
 
+/* ═══════════════════════════════════════════════════════════════════
+   COORDINATES → PCF TAB  (c2p-*)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Root: full-height two-column layout + debug panel below */
+.c2p-root {
+  display: flex;
+  gap: 0.75rem;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Left column — input + preview */
+.c2p-col-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 48%;
+  min-width: 340px;
+  overflow: hidden;
+}
+
+/* Right column — options + output */
+.c2p-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ── Mode bar ─────────────────────────────────────────────────── */
+.c2p-mode-bar {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--steel);
+}
+
+.c2p-mode-btn {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.72rem;
+  font-family: var(--font-code);
+  font-weight: 600;
+  background: var(--bg-3);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.c2p-mode-btn:hover  { color: var(--text-primary); background: var(--bg-4); }
+.c2p-mode-btn.active {
+  background: var(--amber-glow);
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.c2p-mock-btn {
+  margin-left: auto;
+  font-size: 0.68rem;
+  background: var(--bg-2);
+  border-color: var(--steel-light);
+  color: var(--blue-info);
+}
+.c2p-mock-btn:hover { background: var(--blue-dim); color: var(--text-primary); }
+
+/* ── Raw text input ───────────────────────────────────────────── */
+.c2p-textarea {
+  width: 100%;
+  height: 200px;
+  background: var(--bg-0);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius-sm);
+  color: var(--text-code);
+  font-family: var(--font-code);
+  font-size: 0.72rem;
+  padding: 0.6rem;
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--transition);
+  line-height: 1.55;
+}
+.c2p-textarea:focus { border-color: var(--amber); }
+.c2p-textarea::placeholder { color: var(--text-muted); }
+
+/* ── CSV import zone ──────────────────────────────────────────── */
+.c2p-import-zone {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--steel-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+}
+.c2p-import-hint {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-family: var(--font-code);
+}
+
+/* ── Action bar ───────────────────────────────────────────────── */
+.c2p-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.c2p-hint {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Preview table wrapper ────────────────────────────────────── */
+.c2p-preview-wrap {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid var(--steel);
+  border-radius: var(--radius-sm);
+  background: var(--bg-0);
+  min-height: 120px;
+  max-height: 320px;
+}
+
+/* Preview table inherits .data-table style; override for compact display */
+.c2p-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.7rem;
+  font-family: var(--font-code);
+}
+.c2p-table th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-3);
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--steel);
+  text-align: left;
+  white-space: nowrap;
+}
+.c2p-table td {
+  padding: 0.28rem 0.5rem;
+  border-bottom: 1px solid var(--steel);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.c2p-table tr:hover td { background: var(--bg-2); }
+.c2p-table tr:last-child td { border-bottom: none; }
+
+/* Arc badge */
+.c2p-badge {
+  font-size: 0.62rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: var(--font-code);
+}
+.c2p-badge-arc {
+  background: var(--blue-dim);
+  color: var(--blue-info);
+  border: 1px solid var(--blue-info);
+}
+
+/* ── Options panel ────────────────────────────────────────────── */
+.c2p-options {
+  background: var(--bg-1);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.75rem;
+}
+.c2p-options-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--amber);
+  font-family: var(--font-code);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+.c2p-options-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.3rem 0.6rem;
+  align-items: center;
+}
+.c2p-options-grid label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-family: var(--font-code);
+}
+.c2p-input {
+  background: var(--bg-0);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.7rem;
+  font-family: var(--font-code);
+  padding: 0.2rem 0.45rem;
+  outline: none;
+  transition: border-color var(--transition);
+  width: 100%;
+}
+.c2p-input:focus { border-color: var(--amber); }
+
+/* ── Generate bar ─────────────────────────────────────────────── */
+.c2p-generate-bar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* ── PCF output ───────────────────────────────────────────────── */
+.c2p-output {
+  flex: 1;
+  width: 100%;
+  min-height: 220px;
+  background: var(--bg-0);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius-sm);
+  color: var(--text-code);
+  font-family: var(--font-code);
+  font-size: 0.7rem;
+  padding: 0.6rem;
+  resize: none;
+  outline: none;
+  line-height: 1.55;
+}
+.c2p-output::placeholder { color: var(--text-muted); }
+
+/* ── Status bar ───────────────────────────────────────────────── */
+.c2p-status {
+  font-size: 0.68rem;
+  font-family: var(--font-code);
+  color: var(--text-muted);
+  padding: 0.2rem 0;
+  border-top: 1px solid var(--steel);
+  margin-top: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Debug panel ──────────────────────────────────────────────── */
+.c2p-debug {
+  background: var(--bg-1);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius-sm);
+  margin-top: 0.5rem;
+  flex-shrink: 0;
+}
+
+.c2p-debug-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.72rem;
+  font-family: var(--font-code);
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--bg-2);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition);
+}
+.c2p-debug-header:hover { background: var(--bg-3); color: var(--text-primary); }
+
+.c2p-debug-hint {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-left: auto;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.c2p-debug-body { padding: 0.4rem 0.5rem; }
+
+.c2p-debug-log {
+  font-family: var(--font-code);
+  font-size: 0.68rem;
+  color: var(--text-code);
+  background: var(--bg-0);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.6rem;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+/* Panel-level flex fix so debug panel sits below main content */
+#panel-coord2pcf.active {
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Responsive — collapse columns on narrow screens */
+@media (max-width: 900px) {
+  .c2p-root { flex-direction: column; }
+  .c2p-col-left { width: 100%; min-width: 0; }
+}

@@ -3,6 +3,35 @@ import Papa from 'papaparse';
 import ExcelJS from 'exceljs';
 import { validateInputRows } from '/js/pcf-fixer-runtime/utils/ZodSchemas.js';
 
+const PCF_TOP_LEVEL_HEADER_PREFIXES = [
+  "ISOGEN-FILES",
+  "UNITS-BORE",
+  "UNITS-CO-ORDS",
+  "UNITS-WEIGHT",
+  "UNITS-BOLT-DIA",
+  "UNITS-BOLT-LENGTH",
+  "PIPELINE-REFERENCE",
+  "PROJECT-IDENTIFIER",
+  "AREA",
+  "DATE-DMY",
+  "DATE-MDY",
+  "DRAWING-NUMBER",
+  "DRAWING-NAME",
+  "PROJECT-NAME",
+  "ORIGINATING-SYSTEM",
+  "PIPING-SPEC",
+  "PIPING-CLASS",
+  "PIPING_CLASS",
+  "RATING",
+  "LINENO_KEY",
+  "LINE-NO-KEY",
+  "LINEKEY",
+  "SPOOL",
+  "ITEM-CODE",
+  "ITEM-DESCRIPTION",
+  "FABRICATION-ITEM"
+];
+
 export async function parseExcelOrCSV(file, config) {
   return new Promise((resolve, reject) => {
     const isCSV = file.name.toLowerCase().endsWith('.csv');
@@ -89,8 +118,8 @@ export async function parsePCF(file, config) {
           const trimmed = line.trim();
           if (!trimmed) continue;
 
-          // Ignore header items for data table parsing
-          if (["ISOGEN-FILES", "UNITS-BORE", "UNITS-CO-ORDS", "UNITS-WEIGHT", "UNITS-BOLT-DIA", "UNITS-BOLT-LENGTH", "PIPELINE-REFERENCE", "PROJECT-IDENTIFIER", "AREA"].some(h => line.startsWith(h))) {
+          // Ignore top-level metadata headers so they never become fake component rows.
+          if (PCF_TOP_LEVEL_HEADER_PREFIXES.some(h => trimmed.toUpperCase().startsWith(h))) {
             continue;
           }
 

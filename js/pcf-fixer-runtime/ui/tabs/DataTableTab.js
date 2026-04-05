@@ -3,7 +3,7 @@ import { useAppContext } from '/js/pcf-fixer-runtime/store/AppContext.js';
 import { useStore } from '/js/pcf-fixer-runtime/store/useStore.js';
 import { runValidationChecklist } from '/js/pcf-fixer-runtime/engine/Validator.js';
 import { createLogger } from '/js/pcf-fixer-runtime/utils/Logger.js';
-import { exportToExcel, generatePCFText } from '/js/pcf-fixer-runtime/utils/ImportExport.js';
+import { exportToExcel, generatePCFText, parsePCF } from '/js/pcf-fixer-runtime/utils/ImportExport.js';
 
 // ---------------------------------------------------------------------------
 // Diff View helpers
@@ -27,6 +27,152 @@ function formatFieldValue(row, field) {
   const v = row?.[field];
   if (['ep1', 'ep2', 'cp', 'bp'].includes(field)) return fmtCoordShort(v);
   return v != null ? String(v) : '—';
+}
+function formatCaDisplayValue(value) {
+  if (value === undefined || value === null || value === '') return '—';
+  const text = String(value).trim();
+  const numericMatch = text.match(/^([+-]?(?:\d+(?:\.\d+)?|\.\d+))/);
+  return numericMatch ? numericMatch[1] : text;
+}
+
+const IMPORT_TOP_LEVEL_PREFIXES = [
+  "ISOGEN-FILES",
+  "UNITS-BORE",
+  "UNITS-CO-ORDS",
+  "UNITS-WEIGHT",
+  "UNITS-BOLT-DIA",
+  "UNITS-BOLT-LENGTH",
+  "PIPELINE-REFERENCE",
+  "PROJECT-IDENTIFIER",
+  "AREA",
+  "DATE-DMY",
+  "DATE-MDY",
+  "DRAWING-NUMBER",
+  "DRAWING-NAME",
+  "PROJECT-NAME",
+  "ORIGINATING-SYSTEM",
+  "PIPING-SPEC",
+  "PIPING-CLASS",
+  "PIPING_CLASS",
+  "RATING",
+  "LINENO_KEY",
+  "LINE-NO-KEY",
+  "LINEKEY",
+  "SPOOL",
+  "ITEM-CODE",
+  "ITEM-DESCRIPTION",
+  "FABRICATION-ITEM"
+];
+function sanitizeImportPcfText(rawText) {
+  return String(rawText || '').replace(/^\uFEFF/, '').split(/\r?\n/).filter(line => {
+    if (!line.trim()) return true;
+    if (/^[\t ]/.test(line)) return true;
+    const upper = line.trim().toUpperCase();
+    return !IMPORT_TOP_LEVEL_PREFIXES.some(prefix => upper.startsWith(prefix));
+  }).join('\n');
+}
+function extractImportHeaderValue(rawText, prefixes) {
+  const lines = String(rawText || '').replace(/^\uFEFF/, '').split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const upper = trimmed.toUpperCase();
+    if (!prefixes.some(prefix => upper.startsWith(prefix))) continue;
+    const parts = trimmed.split(/\s+/).slice(1);
+    if (parts.length === 0) return '';
+    if (parts[0].toLowerCase() === 'export') return parts.slice(1).join(' ').trim();
+    return parts.join(' ').trim();
+  }
+  return '';
+}
+function normalizeImportPoint(point) {
+  if (!point || typeof point !== 'object') return point ?? undefined;
+  const x = Number(point.x);
+  const y = Number(point.y);
+  const z = Number(point.z);
+  if (!Number.isFinite(x) && !Number.isFinite(y) && !Number.isFinite(z)) return undefined;
+  return {
+    x: Number.isFinite(x) ? x : 0,
+    y: Number.isFinite(y) ? y : 0,
+    z: Number.isFinite(z) ? z : 0
+  };
+}
+function normalizeImportCa(row) {
+  const ca = {};
+  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 97, 98].forEach(n => {
+    const value = row?.ca?.[n] ?? row?.ca?.[String(n)] ?? row?.[`CA${n}`] ?? row?.[`ca${n}`];
+    if (value !== undefined && value !== null && value !== '') {
+      ca[n] = value;
+    }
+  });
+  return ca;
+}
+function parseImportMessageSquare(text, fallbackIndex) {
+  const refMatch = String(text || '').match(/RefNo\s*[:=]\s*([^,]+)/i);
+  const seqMatch = String(text || '').match(/SeqNo\s*[:=]\s*([^,]+)/i);
+  return {
+    refNo: refMatch ? refMatch[1].trim() : '',
+    csvSeqNo: seqMatch ? seqMatch[1].trim() : String(fallbackIndex)
+  };
+}
+function normalizeImportedRows(rows, metadata, sourceName) {
+  return rows.map((row, idx) => {
+    const ca = normalizeImportCa(row);
+    const caAliases = {};
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 97, 98].forEach(n => {
+      if (ca[n] !== undefined) {
+        caAliases[`CA${n}`] = ca[n];
+        caAliases[`ca${n}`] = ca[n];
+      }
+    });
+    const messageSquare = parseImportMessageSquare(row.text, idx + 1);
+    return {
+      ...row,
+      ...caAliases,
+      _rowIndex: idx + 1,
+      csvSeqNo: row.csvSeqNo ?? messageSquare.csvSeqNo,
+      text: row.text || '',
+      refNo: row.refNo ?? messageSquare.refNo,
+      pipelineRef: row.pipelineRef ?? metadata.pipelineRef ?? '',
+      projectIdentifier: row.projectIdentifier ?? metadata.projectIdentifier ?? '',
+      area: row.area ?? metadata.area ?? '',
+      PIPING_CLASS: row.PIPING_CLASS ?? metadata.pipingClass ?? row.pipingClass ?? '',
+      pipingClass: row.pipingClass ?? metadata.pipingClass ?? row.PIPING_CLASS ?? '',
+      RATING: row.RATING ?? metadata.rating ?? row.rating ?? '',
+      rating: row.rating ?? metadata.rating ?? row.RATING ?? '',
+      LINENO_KEY: row.LINENO_KEY ?? metadata.lineNoKey ?? row.lineNoKey ?? '',
+      lineNoKey: row.lineNoKey ?? metadata.lineNoKey ?? row.LINENO_KEY ?? '',
+      type: String(row.type || 'UNKNOWN').toUpperCase().trim(),
+      bore: Number.isFinite(Number(row.bore)) ? Number(row.bore) : 0,
+      branchBore: row.branchBore != null && Number.isFinite(Number(row.branchBore)) ? Number(row.branchBore) : null,
+      ep1: normalizeImportPoint(row.ep1),
+      ep2: normalizeImportPoint(row.ep2),
+      cp: normalizeImportPoint(row.cp),
+      bp: normalizeImportPoint(row.bp),
+      supportCoor: normalizeImportPoint(row.supportCoor),
+      skey: row.skey || '',
+      supportName: row.supportName || '',
+      supportGuid: row.supportGuid || '',
+      wallThick: row.wallThick ?? row.wallThk ?? '',
+      wallThk: row.wallThk ?? row.wallThick ?? '',
+      diameter: row.diameter ?? undefined,
+      bendPtr: row.bendPtr ?? '',
+      rigidPtr: row.rigidPtr ?? '',
+      intPtr: row.intPtr ?? '',
+      ca,
+      fixingAction: row.fixingAction || '',
+      fixingActionTier: row.fixingActionTier ?? 0,
+      fixingActionRuleId: row.fixingActionRuleId || '',
+      fixingActionOriginalError: row.fixingActionOriginalError || '',
+      _fixApproved: row._fixApproved,
+      _passApplied: row._passApplied ?? 0,
+      _currentPass: row._currentPass ?? 1,
+      _isPassiveFix: row._isPassiveFix ?? false,
+      _modified: row._modified ? { ...row._modified } : {},
+      _logTags: Array.isArray(row._logTags) ? [...row._logTags] : [],
+      _importSource: sourceName
+    };
+  });
 }
 function DiffView({
   stage1Data,
@@ -227,6 +373,111 @@ export function DataTableTab({
     direction: 'asc'
   });
   const [columnFilters, setColumnFilters] = React.useState({});
+  const pcfInputRef = React.useRef(null);
+  const handleImportPcfClick = () => {
+    if (pcfInputRef.current) pcfInputRef.current.click();
+  };
+  const handleImportPcfChange = async e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const rawText = await file.text();
+      const metadata = {
+        pipelineRef: extractImportHeaderValue(rawText, ["PIPELINE-REFERENCE"]),
+        projectIdentifier: extractImportHeaderValue(rawText, ["PROJECT-IDENTIFIER"]),
+        area: extractImportHeaderValue(rawText, ["AREA"]),
+        pipingClass: extractImportHeaderValue(rawText, ["PIPING-CLASS", "PIPING_CLASS"]),
+        rating: extractImportHeaderValue(rawText, ["RATING"]),
+        lineNoKey: extractImportHeaderValue(rawText, ["LINENO_KEY", "LINE-NO-KEY", "LINEKEY"])
+      };
+      const cleanedText = sanitizeImportPcfText(rawText);
+      const importFile = cleanedText === rawText ? file : new File([cleanedText], file.name, {
+        type: file.type || 'text/plain'
+      });
+      const parsedRows = await parsePCF(importFile, state.config);
+      const importedRows = normalizeImportedRows(parsedRows, metadata, file.name);
+      if (!importedRows.length) {
+        throw new Error('No component rows were found in the selected PCF.');
+      }
+      dispatch({
+        type: "RESET_ALL"
+      });
+      useStore.setState({
+        pastStates: [],
+        futureStates: [],
+        history: [],
+        historyIdx: -1,
+        hiddenElementIds: [],
+        multiSelectedIds: [],
+        measurePts: [],
+        cursorSnapPoint: null,
+        selectedElementId: null,
+        hoveredElementId: null,
+        contextMenu: null
+      });
+      const store = useStore.getState();
+      store.setProposals([]);
+      store.setDataTable(importedRows);
+      dispatch({
+        type: "SET_DATA_TABLE",
+        payload: importedRows
+      });
+      dispatch({
+        type: "ADD_LOG",
+        payload: {
+          type: "Info",
+          message: `Imported ${importedRows.length} rows from ${file.name}.`
+        }
+      });
+      dispatch({
+        type: "SET_STATUS_MESSAGE",
+        payload: `Imported ${importedRows.length} rows from ${file.name}`
+      });
+      setFilterAction('ALL');
+      setSearchText('');
+      setDiffMode(false);
+      setHiddenGroups(new Set());
+      setShowColPanel(false);
+      setColumnFilters({});
+      setSortConfig({
+        key: '_rowIndex',
+        direction: 'asc'
+      });
+    } catch (err) {
+      dispatch({
+        type: "ADD_LOG",
+        payload: {
+          type: "Error",
+          message: `Failed to import PCF: ${err.message}`
+        }
+      });
+      dispatch({
+        type: "SET_STATUS_MESSAGE",
+        payload: `Error importing PCF: ${err.message}`
+      });
+    } finally {
+      e.target.value = '';
+    }
+  };
+  const renderImportControls = (buttonClassName, label = 'Import PCF') => _jsxs(_Fragment, {
+    children: [_jsxs("button", {
+      type: "button",
+      onClick: handleImportPcfClick,
+      className: buttonClassName,
+      children: [_jsx("span", {
+        className: "mr-1",
+        children: "\u2B07"
+      }), label]
+    }), _jsx("input", {
+      type: "file",
+      accept: ".pcf,.txt,text/plain",
+      ref: pcfInputRef,
+      onChange: handleImportPcfChange,
+      style: {
+        display: 'none'
+      }
+    })]
+  });
   const handleSort = key => {
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
@@ -769,15 +1020,18 @@ export function DataTableTab({
       }), _jsx("p", {
         className: "max-w-xl text-center",
         children: "This is the final validation stage where VXX syntax rules and RXX topological rules are executed one last time before export to ensure no regressions were introduced during Stage 2 fixing."
-      }), _jsx("button", {
-        onClick: () => {
-          dispatch({
-            type: "SET_STAGE_3_DATA",
-            payload: state.stage2Data
-          });
-        },
-        className: "mt-4 px-4 py-2 bg-blue-600 text-white rounded font-medium shadow",
-        children: "Pull Data from Stage 2"
+      }), _jsxs("div", {
+        className: "mt-4 flex flex-wrap items-center justify-center gap-2",
+        children: [renderImportControls("px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium shadow"), _jsx("button", {
+          onClick: () => {
+            dispatch({
+              type: "SET_STAGE_3_DATA",
+              payload: state.stage2Data
+            });
+          },
+          className: "px-4 py-2 bg-blue-600 text-white rounded font-medium shadow",
+          children: "Pull Data from Stage 2"
+        })]
       })]
     });
   }
@@ -810,11 +1064,14 @@ export function DataTableTab({
         }), _jsx("p", {
           className: "max-w-xl text-center mb-6",
           children: "Data for Stage 2 (Topology & Fixing) must be explicitly pulled from Stage 1 after syntax checks are complete."
-        }), _jsx("button", {
-          onClick: handlePullStage1,
-          disabled: !state.dataTable || state.dataTable.length === 0,
-          className: "mt-4 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded font-bold shadow disabled:opacity-50",
-          children: "Pull Data from Stage 1"
+        }), _jsxs("div", {
+          className: "mt-4 flex flex-wrap items-center justify-center gap-2",
+          children: [renderImportControls("px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium shadow"), _jsx("button", {
+            onClick: handlePullStage1,
+            disabled: !state.dataTable || state.dataTable.length === 0,
+            className: "px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded font-bold shadow disabled:opacity-50",
+            children: "Pull Data from Stage 1"
+          })]
         }), (!state.dataTable || state.dataTable.length === 0) && _jsx("p", {
           className: "text-xs mt-2 text-red-500",
           children: "Stage 1 has no data."
@@ -875,7 +1132,10 @@ export function DataTableTab({
         children: "No Data Loaded"
       }), _jsx("p", {
         className: "max-w-md text-center",
-        children: "Import a PCF, CSV, or Excel file using the buttons in the header to populate the Data Table."
+        children: "Import a PCF, CSV, or Excel file using the Import PCF button to populate the Data Table."
+      }), _jsxs("div", {
+        className: "mt-4",
+        children: [renderImportControls("px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium shadow")]
       })]
     });
   }
@@ -1144,7 +1404,7 @@ export function DataTableTab({
         })
       }), _jsxs("div", {
         className: "flex flex-wrap items-center gap-2 bg-white px-2 py-1 rounded border border-slate-300 shadow-sm",
-        children: [stage === "2" && _jsx("button", {
+        children: [renderImportControls("px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold border border-emerald-700 transition-all shadow-sm whitespace-nowrap"), stage === "2" && _jsx("button", {
           onClick: handlePullStage1,
           className: "px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded text-xs font-bold border border-amber-200 transition-all shadow-sm mr-2 whitespace-nowrap",
           children: "\uD83D\uDCE5 Pull from Stage 1"
@@ -1703,7 +1963,7 @@ export function DataTableTab({
                 let caVal = row.ca && row.ca[n] ? row.ca[n] : row[`CA${n}`];
                 return _jsx("td", {
                   className: "px-3 py-2 text-slate-500 border-r border-slate-200",
-                  children: caVal || '—'
+                  children: formatCaDisplayValue(caVal)
                 }, `ca${n}`);
               })]
             }, String(row._rowIndex ?? rowIdx));
