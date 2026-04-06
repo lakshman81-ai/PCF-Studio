@@ -228,8 +228,9 @@ function doGenerate() {
   if (liveErrors.length) _scShowErrors(liveErrors);
 
   // Combine: textarea coords + canvas-drawn emit p1 origins
+  // Only use textarea points when textarea has content — never fall back to stale _supportPoints
   const canvasProbePoints = _canvasEmits.map(e => e.p1);
-  const activeSupports = [...(livePoints.length ? livePoints : _supportPoints), ...canvasProbePoints];
+  const activeSupports = [...livePoints, ...canvasProbePoints];
 
   let probeSupports     = [];
   let segmentedPipeBend = null;   // pipe+bend components after split
@@ -570,11 +571,37 @@ export function initCoord2PcfTab() {
   const body = el('c2p-debug-body');
   if (body) body.style.display = 'none';
 
+  // Sub-tab switching (Input & PCF / CoorCanvas)
+  let _canvasMounted = false;
+  document.querySelectorAll('.c2p-subtab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.subtab;
+      document.querySelectorAll('.c2p-subtab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.c2p-pane').forEach(p => { p.style.display = 'none'; });
+      const pane = el(`c2p-pane-${target}`);
+      if (pane) pane.style.display = '';
+      if (target === 'canvas') {
+        if (!_canvasMounted) {
+          _canvasMounted = true;
+          _mountCanvas();
+        } else {
+          _refreshCanvas();
+        }
+      }
+    });
+  });
+
   // Bind dynamic PCF regeneration on options change
   _bindOptionsDynamic();
 
-  // Mount canvas preview
-  _mountCanvas();
+  // Wire PCF output click → CoorCanvas refresh (when canvas tab is active)
+  el('c2p-pcf-output')?.addEventListener('click', () => {
+    const activeSubtab = document.querySelector('.c2p-subtab.active');
+    if (activeSubtab?.dataset?.subtab === 'canvas') {
+      _refreshCanvas();
+    }
+  });
 
   setStatus('Ready — paste coordinates or import a file.');
 }

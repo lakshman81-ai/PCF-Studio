@@ -85,7 +85,7 @@ const _scanAttrsForRefNo = (attrs) => {
         const m = String(v || '').match(/RefNo:=\s*([^\s,]+)/i);
         if (m) return m[1];
     }
-    return attrs['REFNO'] || attrs['COMPONENT-ATTRIBUTE99'] || attrs['PIPELINE-REFERENCE'] || null;
+    return attrs['REFNO'] || attrs['COMPONENT-ATTRIBUTE97'] || attrs['PIPELINE-REFERENCE'] || null;
 };
 
 // Scan backwards from idx, collecting MESSAGE-SQUARE attrs until a real component is hit.

@@ -112,7 +112,7 @@ function emitTee(comp, seqNo, ca, dp) {
     `${INDENT}CENTRE-POINT  ${fmtCoord(comp.cp, b, dp)}`,
     `${INDENT}BRANCH1-POINT  ${fmtCoord(comp.bp, bb, dp)}`,
     `${INDENT}<SKEY>  TEBW`,
-    ...buildCA(ca, true),
+    ...buildCA(ca, false),
     '',
   ];
 }

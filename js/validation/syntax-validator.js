@@ -141,6 +141,38 @@ export const validateSyntax = (pcfLines, config) => {
       }
     }
 
+    // SV-005: BEND CENTRE-POINT geometric validation
+    // The correct CP for a 90° axis-aligned bend is the corner intersection
+    // of the two perpendicular legs (not a bisector midpoint).
+    if (kw === 'BEND') {
+      const ep1Line = block.attributes.find(a => a.line.startsWith('END-POINT'));
+      const ep2Line = block.attributes.filter(a => a.line.startsWith('END-POINT'))[1];
+      const cpLine  = block.attributes.find(a => a.line.startsWith('CENTRE-POINT'));
+      if (ep1Line && ep2Line && cpLine) {
+        const parseCoord = (l) => {
+          const parts = l.line.split(/\s+/);
+          return { x: parseFloat(parts[1]), y: parseFloat(parts[2]), z: parseFloat(parts[3]) };
+        };
+        const ep1 = parseCoord(ep1Line);
+        const ep2 = parseCoord(ep2Line);
+        const cp  = parseCoord(cpLine);
+        // Try both corner candidates
+        const c1 = { x: ep1.x, y: ep2.y, z: ep1.z };
+        const c2 = { x: ep2.x, y: ep1.y, z: ep1.z };
+        const dist = (a, b) => Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2);
+        const d1 = dist(cp, c1);
+        const d2 = dist(cp, c2);
+        const expected = d1 < d2 ? c1 : c2;
+        const deviation = Math.min(d1, d2);
+        if (deviation > 1.0) {
+          issues.push(_issue('SV-005', 'ERROR', kw, cpLine.lineNo,
+            `BEND CP geometric error: deviation ${deviation.toFixed(2)}mm from expected corner`,
+            `Expected CP: ${expected.x.toFixed(4)} ${expected.y.toFixed(4)} ${expected.z.toFixed(4)}`,
+            `Move CENTRE-POINT to the corner intersection of the two perpendicular legs`));
+        }
+      }
+    }
+
     // SV-004: END-POINTs count
     const epCount = attrNames.filter(a => a === 'END-POINT').length;
     if (['PIPE', 'FLANGE', 'VALVE', 'REDUCER-CONCENTRIC', 'REDUCER-ECCENTRIC'].includes(kw)) {
@@ -163,4 +195,29 @@ export const validateSyntax = (pcfLines, config) => {
   });
 
   return issues;
+};
+
+/**
+ * Dispatch entry point: routes to legacy or Common PCF Builder syntax check
+ * based on config.engineMode.
+ *
+ * Legacy mode:  operates on pcfLines (string[]) via validateSyntax()
+ * Common mode:  operates on components (object[]) via runSyntaxCheck() from syntax-checker.js
+ *
+ * @param {string[]|object[]} input  — pcfLines in legacy mode, components[] in common mode
+ * @param {object}            config
+ * @returns {Promise<Issue[]>}
+ */
+export const runValidation = async (input, config) => {
+  if (config?.engineMode === 'common') {
+    const { runSyntaxCheck } = await import('../pcf-engine/syntax-checker.js');
+    const { errors, warnings, infos } = runSyntaxCheck(input, config);
+    // Normalise to Issue[] shape expected by callers
+    return [
+      ...errors.map(i => ({ ...i, phase: 'SYNTAX', fixable: false, fix: null })),
+      ...warnings.map(i => ({ ...i, phase: 'SYNTAX', fixable: false, fix: null })),
+      ...infos.map(i => ({ ...i, severity: 'INFO', phase: 'SYNTAX', fixable: false, fix: null })),
+    ];
+  }
+  return validateSyntax(input, config);
 };

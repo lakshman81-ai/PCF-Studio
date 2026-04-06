@@ -174,6 +174,15 @@
 
     <!-- ⑤ COORDINATES → PCF TAB -->
     <section id="panel-coord2pcf" class="tab-panel" role="tabpanel">
+
+      <!-- Sub-tab bar -->
+      <div class="c2p-subtabs">
+        <button class="c2p-subtab active" data-subtab="input">Input &amp; PCF</button>
+        <button class="c2p-subtab" data-subtab="canvas">CoorCanvas</button>
+      </div>
+
+      <!-- Input & PCF pane -->
+      <div id="c2p-pane-input" class="c2p-pane">
       <div class="c2p-root">
 
         <!-- ── Left Column: Input + Preview ─────────────────────────── -->
@@ -290,9 +299,12 @@
         </div>
 
       </div>
+      </div><!-- end c2p-pane-input -->
 
-      <!-- ── Canvas Preview ─────────────────────────────────────────────── -->
-      <div id="c2p-canvas-mount" class="c2p-canvas-mount"></div>
+      <!-- CoorCanvas pane -->
+      <div id="c2p-pane-canvas" class="c2p-pane" style="display:none">
+        <div id="c2p-canvas-mount" class="c2p-canvas-mount"></div>
+      </div>
 
       <!-- ── Collapsible Debug Panel ──────────────────────────────────── -->
       <div class="c2p-debug">

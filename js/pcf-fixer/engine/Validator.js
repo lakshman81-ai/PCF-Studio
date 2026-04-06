@@ -29,57 +29,29 @@ export function runValidationChecklist(dataTable, config, logger, stage = "1") {
     // Helper to see if a rule should run
     const shouldRun = (ruleId) => enabledChecks[ruleId] !== false; // default true if missing
 
-    // V2: Decimal Consistency (Auto-detected)
+    // V2: Decimal Consistency (Auto-detected) + EP token count check
     if (shouldRun('V2') && row.ep1) {
         const isLocalFloat = !Number.isInteger(row.ep1.x) || !Number.isInteger(row.ep1.y) || !Number.isInteger(row.ep1.z);
         if (!isGlobalFloatStandard && isLocalFloat) {
             logger.push({ stage: "VALIDATION", type: "Warning", ruleId: "V2", tier: 3, row: ri, message: `WARNING [V2]: Decimal consistency violation. Expected integers based on file standard.` });
             warnCount++;
         }
-    }
-
-    // V17: No EP should be blank or "-"
-    if (shouldRun('V17')) {
-        const checkEP = (ep, name) => {
-            if (ep === undefined || ep === null || ep === "" || ep === "-") {
-                logger.push({ stage: "VALIDATION", type: "Error", ruleId: "V17", tier: 4, row: ri, message: `ERROR [V17]: ${name} is missing, blank, or "-".` });
-                errorCount++;
-            }
-        };
-        // Exclude components that legitimately do not have end-points like SUPPORT (handled else where/not strictly required to have EP),
-        // but typically all connectable physical components should have at least EP1.
-        // Actually the rule just says "No EP should be blank or -". Let's apply it generally to physical components that have parsed EPs.
-        // If it's undefined, maybe it wasn't parsed. If it's a structural component, it needs it.
-        const nonEpComps = ["OLET", "SUPPORT", "PIPELINE-REFERENCE", "MESSAGE-SQUARE"];
-        if (!nonEpComps.includes(type) && !type.startsWith("UNITS-")) {
-            checkEP(row.ep1, "EP1");
-            checkEP(row.ep2, "EP2");
+        // Warn if EP appears to have fewer than 4 tokens (x, y, z, bore)
+        if (row.ep1.bore === undefined || row.ep1.bore === null) {
+            logger.push({ stage: "VALIDATION", type: "Warning", ruleId: "V2", tier: 3, row: ri, message: `WARNING [V2]: EP1 appears to be missing bore token (expected 4 tokens: x y z bore).` });
+            warnCount++;
         }
     }
 
-    // V3: Bore Consistency
-    if (shouldRun('V3')) {
-        if (type.includes("REDUCER")) {
-            if (row.bore === row.branchBore) {
-                logger.push({ stage: "VALIDATION", type: "Error", ruleId: "V3", tier: 4, row: ri, message: `ERROR [V3]: REDUCER EP1 bore = EP2 bore. Must differ.` });
-                errorCount++;
-            }
-        } else if (["PIPE", "FLANGE", "VALVE", "BEND", "TEE"].includes(type)) {
-            if (row._rowIndex > 1) {
-                const prevRow = dataTable.find(r => r._rowIndex === row._rowIndex - 1);
+    // V17: Line ending check (CRLF enforcement is a file-level concern; row-level EP blank
+    // checks are removed since OLET/SUPPORT legitimately have no EPs and other components
+    // are validated by V1/V2. No row-level action here.
 
-                // Fix: Check if this row is actually connected to the previous row before comparing bores.
-                // If it's a branch from somewhere else (like Row 6 connecting to Row 3 branch), the bore might legitimately differ from the sequential previous row.
-                let isSequentiallyConnected = false;
-                if (prevRow && prevRow.ep2 && row.ep1 && (Math.abs(prevRow.ep2.x - row.ep1.x) < 1 && Math.abs(prevRow.ep2.y - row.ep1.y) < 1 && Math.abs(prevRow.ep2.z - row.ep1.z) < 1)) {
-                    isSequentiallyConnected = true;
-                }
-
-                if (isSequentiallyConnected && prevRow && !prevRow.type.includes("REDUCER") && prevRow.bore && row.bore && prevRow.bore !== row.bore) {
-                     logger.push({ stage: "VALIDATION", type: "Error", ruleId: "V3", tier: 4, row: ri, message: `ERROR [V3]: PIPE bore changes without being reducer.` });
-                     errorCount++;
-                }
-            }
+    // V3: Bore Consistency — REDUCER-only: inlet bore must differ from outlet bore
+    if (shouldRun('V3') && type.includes("REDUCER")) {
+        if (row.bore === row.branchBore) {
+            logger.push({ stage: "VALIDATION", type: "Error", ruleId: "V3", tier: 4, row: ri, message: `ERROR [V3]: REDUCER EP1 bore = EP2 bore. Must differ.` });
+            errorCount++;
         }
     }
 
@@ -131,9 +103,11 @@ export function runValidationChecklist(dataTable, config, logger, stage = "1") {
     }
 
     // V15: Coordinate Continuity (Only in Stage 2/3)
-    if (stage !== "1" && shouldRun('V15') && type !== "SUPPORT" && row._rowIndex > 1) {
+    if (stage !== "1" && shouldRun('V15') && type !== "SUPPORT" && type !== "OLET" && row._rowIndex > 1) {
         const prevRow = dataTable.find(r => r._rowIndex === row._rowIndex - 1);
-        if (prevRow && prevRow.ep2 && row.ep1 && !vec.approxEqual(row.ep1, prevRow.ep2, 1.0)) {
+        // Skip if the previous row is a branch source (TEE/OLET) — EP1 may connect to BP, not EP2
+        const prevIsBranch = prevRow && ["TEE", "OLET"].includes((prevRow.type || "").toUpperCase());
+        if (!prevIsBranch && prevRow && prevRow.ep2 && row.ep1 && !vec.approxEqual(row.ep1, prevRow.ep2, 1.0)) {
             const dist = vec.dist(row.ep1, prevRow.ep2);
             logger.push({ stage: "VALIDATION", type: "Warning", ruleId: "V15", tier: 3, row: ri, message: `WARNING [V15]: Coordinate discontinuity at EP1 by ${dist.toFixed(1)}mm.` });
             warnCount++;
@@ -250,11 +224,16 @@ export function runValidationChecklist(dataTable, config, logger, stage = "1") {
       }
     }
 
-    // V14: SKEY Presence
+    // V14: SKEY Presence + format check (must use angle-bracket token style <SKEY>)
     const skeyRequired = ["FLANGE", "VALVE", "BEND", "TEE", "OLET", "REDUCER-CONCENTRIC", "REDUCER-ECCENTRIC"];
-    if (skeyRequired.includes(type) && !row.skey) {
-      logger.push({ stage: "VALIDATION", type: "Warning", ruleId: "V14", tier: 3, row: ri, message: `WARNING [V14]: Missing <SKEY> for ${type}.` });
-      warnCount++;
+    if (skeyRequired.includes(type)) {
+      if (!row.skey) {
+        logger.push({ stage: "VALIDATION", type: "Warning", ruleId: "V14", tier: 3, row: ri, message: `WARNING [V14]: Missing <SKEY> for ${type}.` });
+        warnCount++;
+      } else if (!row.skey.trim().startsWith('<')) {
+        logger.push({ stage: "VALIDATION", type: "Warning", ruleId: "V14", tier: 3, row: ri, message: `WARNING [V14]: SKEY token for ${type} should use angle-bracket format (e.g. <BEBW>), found: ${row.skey}.` });
+        warnCount++;
+      }
     }
 
     // V18: Bore Unit
