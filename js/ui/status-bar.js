@@ -12,7 +12,8 @@ const LOG_PREFIX = "[StatusBar]";
 const STATS_CONTAINER_ID = "pipeline-stats-container";
 
 // Version updated as per rule: ver.dd-mm-yy time xx.xx (Task 5 / Rule 8B)
-export const APP_REVISION = "Ver 05-04-2026 (3)";
+export const APP_REVISION = "Ver 06-04-2026 (2)";
+
 
 export function initStatusBar() {
     // 1. Locate the existing footer

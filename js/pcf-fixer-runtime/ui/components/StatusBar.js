@@ -897,6 +897,12 @@ export function StatusBar({
             title: "Undo last applied fixes",
             children: "\u21B6 Undo"
           }), _jsx("button", {
+            onClick: () => { setRunGroup('group1'); handleSmartFix(); },
+            disabled: !canRunSmartFix,
+            className: "px-4 py-1.5 bg-blue-700 hover:bg-blue-600 rounded font-medium disabled:opacity-50 transition-colors h-full border border-blue-500/40",
+            title: !isValidationDone ? "Run Phase 1 Validator first" : hasRunSmartFix ? "Smart Fix already executed — Undo first to re-run" : "Run Pass 1 (Group 1) directly without opening engine selector",
+            children: "\u25B6 Run First Pass"
+          }), _jsx("button", {
             onClick: handleSmartFix,
             disabled: !canRunSmartFix,
             className: "px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded font-medium disabled:opacity-50 transition-colors h-full",

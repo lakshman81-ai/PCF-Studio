@@ -25,15 +25,12 @@ export const buildHeader = (pipelineRef) => {
   ];
 
   if (pipelineRef) {
-    console.log(`[DEBUG-Header] buildHeader() writing PIPELINE-REFERENCE "${pipelineRef}"`);
-    lines.push(`PIPELINE-REFERENCE ${pipelineRef}`);
+    lines.push(`PIPELINE-REFERENCE export ${pipelineRef}`);
     lines.push('    PROJECT-IDENTIFIER P1');
     lines.push('    AREA A1');
   } else {
     console.log('[DEBUG-Header] buildHeader() — no pipelineRef, skipping PIPELINE-REFERENCE');
   }
-
-  lines.push('MESSAGE-SQUARE');
 
   return lines;
 };

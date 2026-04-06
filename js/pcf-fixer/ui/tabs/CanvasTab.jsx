@@ -358,6 +358,42 @@ const ImmutableComponents = () => {
   return (
     <group>
       {elements.map((el, i) => {
+        // SUPPORT: positioned by supportCoor, not ep1/ep2
+        if ((el.type || '').toUpperCase() === 'SUPPORT') {
+          const coor = el.supportCoor;
+          if (!coor) return null;
+          const r = Math.max((el.bore || 100) / 2, 50);
+          const isSelected = multiSelectedIds.includes(el._rowIndex);
+          const isRest = Object.values(el).some(v => typeof v === 'string' && ['CA150', 'REST'].includes(v.toUpperCase()));
+          const isGui  = Object.values(el).some(v => typeof v === 'string' && ['CA100', 'GUI'].includes(v.toUpperCase()));
+          const finalColor = isSelected ? appSettings.selectionColor : (isRest || isGui ? '#22c55e' : typeColor(el.type, appSettings));
+          const onSuppClick = (e) => {
+            if (e.nativeEvent) e.nativeEvent.__handled3D = true;
+            if (useStore.getState().canvasMode !== 'VIEW') return;
+            e.stopPropagation();
+            if (e.ctrlKey || e.metaKey) { useStore.getState().toggleMultiSelect(el._rowIndex); }
+            else { useStore.getState().clearMultiSelect(); useStore.getState().setSelected(el._rowIndex); useStore.getState().setMultiSelect([el._rowIndex]); }
+          };
+          return (
+            <group key={`supp-${i}`} position={[coor.x, coor.y, coor.z]} onPointerDown={onSuppClick}>
+              <mesh position={[0, r * 0.5, 0]}>
+                <cylinderGeometry args={[0, r * 2, r, 8]} />
+                <meshStandardMaterial color={finalColor} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
+              </mesh>
+              <mesh position={[0, -r * 0.25, 0]}>
+                <cylinderGeometry args={[r, r, r * 0.5, 8]} />
+                <meshStandardMaterial color={finalColor} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
+              </mesh>
+              {isGui && (
+                <group position={[r * 1.5, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+                  <mesh position={[0, r * 0.5, 0]}><cylinderGeometry args={[0, r * 1.5, r, 8]} /><meshStandardMaterial color={finalColor} /></mesh>
+                  <mesh position={[0, -r * 0.25, 0]}><cylinderGeometry args={[r * 0.8, r * 0.8, r * 0.5, 8]} /><meshStandardMaterial color={finalColor} /></mesh>
+                </group>
+              )}
+            </group>
+          );
+        }
+
         if (!el.ep1 || !el.ep2) return null;
 
         const vecA = new THREE.Vector3(el.ep1.x, el.ep1.y, el.ep1.z);
@@ -513,60 +549,6 @@ const ImmutableComponents = () => {
               <sphereGeometry args={[r * 1.3, 12, 12]} />
               <meshStandardMaterial color={isSelected ? appSettings.selectionColor : color} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
             </mesh>
-          );
-        }
-
-        if (type === 'SUPPORT') {
-          const isRest = ['CA150', 'REST'].includes((el.type || '').toUpperCase()) ||
-                         Object.values(el).some(v => typeof v === 'string' && ['CA150', 'REST'].includes(v.toUpperCase()));
-          const isGui = ['CA100', 'GUI'].includes((el.type || '').toUpperCase()) ||
-                        Object.values(el).some(v => typeof v === 'string' && ['CA100', 'GUI'].includes(v.toUpperCase()));
-
-          const finalColor = isSelected ? appSettings.selectionColor : (isRest || isGui ? '#22c55e' : (color === '#3b82f6' ? '#94a3b8' : color));
-
-          return (
-            <group key={`supp-${i}`} position={mid} quaternion={quat} onPointerDown={handleSelect}>
-              {/* Support rendering: Up arrow, positioned below the pipe (Bore/2 + half support height) */}
-              <group position={[0, -(r + dist / 2), 0]}>
-                <mesh position={[0, dist / 4, 0]}>
-                  <cylinderGeometry args={[0, r * 2, dist / 2, 8]} />
-                  <meshStandardMaterial color={finalColor} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
-                </mesh>
-                <mesh position={[0, -dist / 4, 0]}>
-                   <cylinderGeometry args={[r, r, dist / 2, 8]} />
-                   <meshStandardMaterial color={finalColor} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
-                </mesh>
-              </group>
-
-              {/* Lateral Arrows for CA100 / Gui */}
-              {isGui && (
-                <>
-                  {/* Left lateral arrow */}
-                  <group position={[r + dist/4, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-                    <mesh position={[0, dist/4, 0]}>
-                       <cylinderGeometry args={[0, r * 1.5, dist / 2, 8]} />
-                       <meshStandardMaterial color={finalColor} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
-                    </mesh>
-                    <mesh position={[0, -dist/4, 0]}>
-                       <cylinderGeometry args={[r, r, dist / 2, 8]} />
-                       <meshStandardMaterial color={finalColor} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
-                    </mesh>
-                  </group>
-
-                  {/* Right lateral arrow */}
-                  <group position={[-(r + dist/4), 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
-                    <mesh position={[0, dist/4, 0]}>
-                       <cylinderGeometry args={[0, r * 1.5, dist / 2, 8]} />
-                       <meshStandardMaterial color={finalColor} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
-                    </mesh>
-                    <mesh position={[0, -dist/4, 0]}>
-                       <cylinderGeometry args={[r, r, dist / 2, 8]} />
-                       <meshStandardMaterial color={finalColor} transparent={isTranslucent} opacity={isTranslucent ? 0.3 : 1} depthWrite={!isTranslucent} />
-                    </mesh>
-                  </group>
-                </>
-              )}
-            </group>
           );
         }
 
@@ -1438,7 +1420,7 @@ const MeasureTool = () => {
                                 <Text position={[0, 50, 1]} color={appSettings.selectionColor} fontSize={100} anchorX="center" anchorY="middle" outlineWidth={2} outlineColor="#0f172a" depthTest={false}>
                                     Dist: {dist.toFixed(1)}mm
                                 </Text>
-                                <Text position={[0, -50, 1]} color="#cbd5e1" fontSize={60} anchorX="center" anchorY="middle" outlineWidth={2} outlineColor="#0f172a" depthTest={false}>
+                                <Text position={[0, -50, 1]} color="#f8fafc" fontSize={60} anchorX="center" anchorY="middle" outlineWidth={2} outlineColor="#0f172a" depthTest={false}>
                                     X:{dx.toFixed(1)} Y:{dy.toFixed(1)} Z:{dz.toFixed(1)}
                                 </Text>
                             </group>
@@ -1765,16 +1747,20 @@ const EndpointSnapLayer = () => {
             </mesh>
 
             {/* Draw snap targets on every EP */}
-            {dataTable.map(row => {
+            {dataTable.map((row, i) => {
                 const pts = [];
                 if (row.ep1) pts.push(new THREE.Vector3(parseFloat(row.ep1.x), parseFloat(row.ep1.y), parseFloat(row.ep1.z)));
                 if (row.ep2) pts.push(new THREE.Vector3(parseFloat(row.ep2.x), parseFloat(row.ep2.y), parseFloat(row.ep2.z)));
-                return pts.map((pt, i) => (
-                    <mesh key={`snap-${row._rowIndex}-${i}`} position={pt} renderOrder={999}>
-                        <sphereGeometry args={[20, 16, 16]} />
-                        <meshBasicMaterial color={appSettings.selectionColor} transparent opacity={0.5} depthTest={false} />
-                    </mesh>
-                ));
+                return (
+                    <React.Fragment key={`group-${row._rowIndex}`}>
+                        {pts.map((pt, j) => (
+                            <mesh key={`snap-${row._rowIndex}-${j}`} position={pt} renderOrder={999}>
+                                <sphereGeometry args={[20, 16, 16]} />
+                                <meshBasicMaterial color={appSettings.selectionColor} transparent opacity={0.5} depthTest={false} />
+                            </mesh>
+                        ))}
+                    </React.Fragment>
+                );
             })}
 
             {/* Draw active connection preview line */}
@@ -2488,6 +2474,23 @@ export function CanvasTab() {
       return { x: (minX + maxX) / 2, y: (minY + maxY) / 2, z: (minZ + maxZ) / 2, floorZ: minZ };
   }, [appState.stage2Data]);
 
+  const axesSize = useMemo(() => {
+      const rows = appState.stage2Data || [];
+      if (!rows.length) return 2000;
+      let minX = Infinity, minY = Infinity, minZ = Infinity;
+      let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+      rows.forEach((r) => {
+          [r.ep1, r.ep2, r.cp, r.bp, r.supportCoor].forEach((p) => {
+              if (!p) return;
+              minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); minZ = Math.min(minZ, p.z);
+              maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); maxZ = Math.max(maxZ, p.z);
+          });
+      });
+      if (minX === Infinity) return 2000;
+      const size = Math.max(maxX - minX, maxY - minY, maxZ - minZ);
+      return size > 0 ? size * 1.5 : 2000;
+  }, [appState.stage2Data]);
+
 
   const showSideInspector = useStore(state => state.showSideInspector);
   const setShowSideInspector = useStore(state => state.setShowSideInspector);
@@ -2914,16 +2917,16 @@ export function CanvasTab() {
 
       <Canvas>
         {orthoMode ? (
-            <OrthographicCamera makeDefault position={[gridCenter.x + 2000, gridCenter.y - 2000, (gridCenter.z ?? 0) + 2000]} up={[0, 0, 1]} zoom={0.2} near={0.1} far={500000} />
+            <OrthographicCamera key="ortho" makeDefault position={[gridCenter.x + 2000, gridCenter.y - 2000, (gridCenter.z ?? 0) + 2000]} up={[0, 0, 1]} zoom={0.2} near={0.1} far={500000} />
         ) : (
-            <PerspectiveCamera makeDefault position={[gridCenter.x + 2000, gridCenter.y - 2000, (gridCenter.z ?? 0) + 2000]} up={[0, 0, 1]} fov={appSettings.cameraFov} near={appSettings.cameraNear || 1} far={appSettings.cameraFar || 500000} />
+            <PerspectiveCamera key="persp" makeDefault position={[gridCenter.x + 2000, gridCenter.y - 2000, (gridCenter.z ?? 0) + 2000]} up={[0, 0, 1]} fov={appSettings.cameraFov} near={appSettings.cameraNear || 1} far={appSettings.cameraFar || 500000} />
         )}
         <color attach="background" args={[appSettings.backgroundColor || '#020617']} />
         <ambientLight intensity={0.6} />
         <directionalLight position={[1000, 1000, 500]} intensity={1.5} />
         <directionalLight position={[-1000, -1000, -500]} intensity={0.5} />
         {appSettings.showGrid && <gridHelper args={[10000, 100]} position={[gridCenter.x, gridCenter.y, gridCenter.floorZ ?? gridCenter.z]} rotation={[Math.PI / 2, 0, 0]} />}
-        {appSettings.showAxes && <axesHelper args={[2000]} />}
+        {appSettings.showAxes && <axesHelper args={[axesSize]} />}
 
         {appState.stage2Data && appState.stage2Data.length > 0 && (
             <>

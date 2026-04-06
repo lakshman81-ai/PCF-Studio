@@ -53,10 +53,10 @@ function DiffView({ stage1Data, stage2Data }) {
   if (changes.length === 0) {
 
   const renderSortHeader = (key, label, className = "") => (
-      <th className={`px-3 py-2 text-left font-semibold text-slate-700 border-r border-slate-300 bg-slate-100 cursor-pointer hover:bg-slate-200 select-none ${className}`} onClick={() => handleSort(key)}>
+      <th key={key} className={`px-3 py-2 text-left font-semibold text-slate-700 border-r border-slate-300 bg-slate-100 cursor-pointer hover:bg-slate-200 select-none ${className}`} onClick={() => handleSort(key)}>
           <div className="flex items-center justify-between">
               <span>{label}</span>
-              {sortConfig.key === key ? (sortConfig.direction === 'asc' ? <span className="text-[10px] ml-1 text-blue-600">▲</span> : <span className="text-[10px] ml-1 text-blue-600">▼</span>) : <span className="text-[10px] ml-1 text-slate-400 opacity-0 group-hover:opacity-100">↕</span>}
+              {sortConfig.key === key ? (sortConfig.direction === 'asc' ? <span key="asc" className="text-[10px] ml-1 text-blue-600">▲</span> : <span key="desc" className="text-[10px] ml-1 text-blue-600">▼</span>) : <span key="none" className="text-[10px] ml-1 text-slate-400 opacity-0 group-hover:opacity-100">↕</span>}
           </div>
       </th>
   );
@@ -71,10 +71,10 @@ function DiffView({ stage1Data, stage2Data }) {
 
 
   const renderSortHeader = (key, label, className = "") => (
-      <th className={`px-3 py-2 text-left font-semibold text-slate-700 border-r border-slate-300 bg-slate-100 cursor-pointer hover:bg-slate-200 select-none ${className}`} onClick={() => handleSort(key)}>
+      <th key={key} className={`px-3 py-2 text-left font-semibold text-slate-700 border-r border-slate-300 bg-slate-100 cursor-pointer hover:bg-slate-200 select-none ${className}`} onClick={() => handleSort(key)}>
           <div className="flex items-center justify-between">
               <span>{label}</span>
-              {sortConfig.key === key ? (sortConfig.direction === 'asc' ? <span className="text-[10px] ml-1 text-blue-600">▲</span> : <span className="text-[10px] ml-1 text-blue-600">▼</span>) : <span className="text-[10px] ml-1 text-slate-400 opacity-0 group-hover:opacity-100">↕</span>}
+              {sortConfig.key === key ? (sortConfig.direction === 'asc' ? <span key="asc" className="text-[10px] ml-1 text-blue-600">▲</span> : <span key="desc" className="text-[10px] ml-1 text-blue-600">▼</span>) : <span key="none" className="text-[10px] ml-1 text-slate-400 opacity-0 group-hover:opacity-100">↕</span>}
           </div>
       </th>
   );
@@ -569,10 +569,10 @@ export function DataTableTab({ stage = "1" }) {
   if (stage === "3" && (!currentData || currentData.length === 0)) {
 
   const renderSortHeader = (key, label, className = "") => (
-      <th className={`px-3 py-2 text-left font-semibold text-slate-700 border-r border-slate-300 bg-slate-100 cursor-pointer hover:bg-slate-200 select-none ${className}`} onClick={() => handleSort(key)}>
+      <th key={key} className={`px-3 py-2 text-left font-semibold text-slate-700 border-r border-slate-300 bg-slate-100 cursor-pointer hover:bg-slate-200 select-none ${className}`} onClick={() => handleSort(key)}>
           <div className="flex items-center justify-between">
               <span>{label}</span>
-              {sortConfig.key === key ? (sortConfig.direction === 'asc' ? <span className="text-[10px] ml-1 text-blue-600">▲</span> : <span className="text-[10px] ml-1 text-blue-600">▼</span>) : <span className="text-[10px] ml-1 text-slate-400 opacity-0 group-hover:opacity-100">↕</span>}
+              {sortConfig.key === key ? (sortConfig.direction === 'asc' ? <span key="asc" className="text-[10px] ml-1 text-blue-600">▲</span> : <span key="desc" className="text-[10px] ml-1 text-blue-600">▼</span>) : <span key="none" className="text-[10px] ml-1 text-slate-400 opacity-0 group-hover:opacity-100">↕</span>}
           </div>
       </th>
   );
@@ -594,10 +594,10 @@ export function DataTableTab({ stage = "1" }) {
     if (stage === "2") {
 
   const renderSortHeader = (key, label, className = "") => (
-      <th className={`px-3 py-2 text-left font-semibold text-slate-700 border-r border-slate-300 bg-slate-100 cursor-pointer hover:bg-slate-200 select-none ${className}`} onClick={() => handleSort(key)}>
+      <th key={key} className={`px-3 py-2 text-left font-semibold text-slate-700 border-r border-slate-300 bg-slate-100 cursor-pointer hover:bg-slate-200 select-none ${className}`} onClick={() => handleSort(key)}>
           <div className="flex items-center justify-between">
               <span>{label}</span>
-              {sortConfig.key === key ? (sortConfig.direction === 'asc' ? <span className="text-[10px] ml-1 text-blue-600">▲</span> : <span className="text-[10px] ml-1 text-blue-600">▼</span>) : <span className="text-[10px] ml-1 text-slate-400 opacity-0 group-hover:opacity-100">↕</span>}
+              {sortConfig.key === key ? (sortConfig.direction === 'asc' ? <span key="asc" className="text-[10px] ml-1 text-blue-600">▲</span> : <span key="desc" className="text-[10px] ml-1 text-blue-600">▼</span>) : <span key="none" className="text-[10px] ml-1 text-slate-400 opacity-0 group-hover:opacity-100">↕</span>}
           </div>
       </th>
   );
@@ -615,10 +615,10 @@ export function DataTableTab({ stage = "1" }) {
     }
 
   const renderSortHeader = (key, label, className = "") => (
-      <th className={`px-3 py-2 text-left font-semibold text-slate-700 border-r border-slate-300 bg-slate-100 cursor-pointer hover:bg-slate-200 select-none ${className}`} onClick={() => handleSort(key)}>
+      <th key={key} className={`px-3 py-2 text-left font-semibold text-slate-700 border-r border-slate-300 bg-slate-100 cursor-pointer hover:bg-slate-200 select-none ${className}`} onClick={() => handleSort(key)}>
           <div className="flex items-center justify-between">
               <span>{label}</span>
-              {sortConfig.key === key ? (sortConfig.direction === 'asc' ? <span className="text-[10px] ml-1 text-blue-600">▲</span> : <span className="text-[10px] ml-1 text-blue-600">▼</span>) : <span className="text-[10px] ml-1 text-slate-400 opacity-0 group-hover:opacity-100">↕</span>}
+              {sortConfig.key === key ? (sortConfig.direction === 'asc' ? <span key="asc" className="text-[10px] ml-1 text-blue-600">▲</span> : <span key="desc" className="text-[10px] ml-1 text-blue-600">▼</span>) : <span key="none" className="text-[10px] ml-1 text-slate-400 opacity-0 group-hover:opacity-100">↕</span>}
           </div>
       </th>
   );
@@ -723,10 +723,10 @@ export function DataTableTab({ stage = "1" }) {
 
 
   const renderSortHeader = (key, label, className = "") => (
-      <th className={`px-3 py-2 text-left font-semibold text-slate-700 border-r border-slate-300 bg-slate-100 cursor-pointer hover:bg-slate-200 select-none ${className}`} onClick={() => handleSort(key)}>
+      <th key={key} className={`px-3 py-2 text-left font-semibold text-slate-700 border-r border-slate-300 bg-slate-100 cursor-pointer hover:bg-slate-200 select-none ${className}`} onClick={() => handleSort(key)}>
           <div className="flex items-center justify-between">
               <span>{label}</span>
-              {sortConfig.key === key ? (sortConfig.direction === 'asc' ? <span className="text-[10px] ml-1 text-blue-600">▲</span> : <span className="text-[10px] ml-1 text-blue-600">▼</span>) : <span className="text-[10px] ml-1 text-slate-400 opacity-0 group-hover:opacity-100">↕</span>}
+              {sortConfig.key === key ? (sortConfig.direction === 'asc' ? <span key="asc" className="text-[10px] ml-1 text-blue-600">▲</span> : <span key="desc" className="text-[10px] ml-1 text-blue-600">▼</span>) : <span key="none" className="text-[10px] ml-1 text-slate-400 opacity-0 group-hover:opacity-100">↕</span>}
           </div>
       </th>
   );
@@ -784,10 +784,10 @@ export function DataTableTab({ stage = "1" }) {
 
 
   const renderSortHeader = (key, label, className = "") => (
-      <th className={`px-3 py-2 text-left font-semibold text-slate-700 border-r border-slate-300 bg-slate-100 cursor-pointer hover:bg-slate-200 select-none ${className}`} onClick={() => handleSort(key)}>
+      <th key={key} className={`px-3 py-2 text-left font-semibold text-slate-700 border-r border-slate-300 bg-slate-100 cursor-pointer hover:bg-slate-200 select-none ${className}`} onClick={() => handleSort(key)}>
           <div className="flex items-center justify-between">
               <span>{label}</span>
-              {sortConfig.key === key ? (sortConfig.direction === 'asc' ? <span className="text-[10px] ml-1 text-blue-600">▲</span> : <span className="text-[10px] ml-1 text-blue-600">▼</span>) : <span className="text-[10px] ml-1 text-slate-400 opacity-0 group-hover:opacity-100">↕</span>}
+              {sortConfig.key === key ? (sortConfig.direction === 'asc' ? <span key="asc" className="text-[10px] ml-1 text-blue-600">▲</span> : <span key="desc" className="text-[10px] ml-1 text-blue-600">▼</span>) : <span key="none" className="text-[10px] ml-1 text-slate-400 opacity-0 group-hover:opacity-100">↕</span>}
           </div>
       </th>
   );
@@ -1075,10 +1075,10 @@ export function DataTableTab({ stage = "1" }) {
 
 
   const renderSortHeader = (key, label, className = "") => (
-      <th className={`px-3 py-2 text-left font-semibold text-slate-700 border-r border-slate-300 bg-slate-100 cursor-pointer hover:bg-slate-200 select-none ${className}`} onClick={() => handleSort(key)}>
+      <th key={key} className={`px-3 py-2 text-left font-semibold text-slate-700 border-r border-slate-300 bg-slate-100 cursor-pointer hover:bg-slate-200 select-none ${className}`} onClick={() => handleSort(key)}>
           <div className="flex items-center justify-between">
               <span>{label}</span>
-              {sortConfig.key === key ? (sortConfig.direction === 'asc' ? <span className="text-[10px] ml-1 text-blue-600">▲</span> : <span className="text-[10px] ml-1 text-blue-600">▼</span>) : <span className="text-[10px] ml-1 text-slate-400 opacity-0 group-hover:opacity-100">↕</span>}
+              {sortConfig.key === key ? (sortConfig.direction === 'asc' ? <span key="asc" className="text-[10px] ml-1 text-blue-600">▲</span> : <span key="desc" className="text-[10px] ml-1 text-blue-600">▼</span>) : <span key="none" className="text-[10px] ml-1 text-slate-400 opacity-0 group-hover:opacity-100">↕</span>}
           </div>
       </th>
   );

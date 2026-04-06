@@ -41,7 +41,7 @@ export function serializeToPCF(components) {
         // CENTRE-POINT (elbows, bends)
         if (comp.centrePoint) {
             const cp = comp.centrePoint;
-            lines.push(`    CENTRE-POINT  ${f4(cp.x)} ${f4(cp.y)} ${f4(cp.z)}`);
+            lines.push(`    CENTRE-POINT  ${f4(cp.x)} ${f4(cp.y)} ${f4(cp.z)} ${f4(cp.bore || 0)}`);
         }
 
         // BRANCH1-POINT (tees, olets)
@@ -53,7 +53,7 @@ export function serializeToPCF(components) {
         // CO-ORDS (supports)
         if (comp.coOrds) {
             const co = comp.coOrds;
-            lines.push(`    CO-ORDS  ${f4(co.x)} ${f4(co.y)} ${f4(co.z)}`);
+            lines.push(`    CO-ORDS  ${f4(co.x)} ${f4(co.y)} ${f4(co.z)} 0.0000`);
         }
 
         // All remaining attributes (SKEY, BORE, PIPELINE-REFERENCE, COMPONENT-ATTRIBUTEn …)
@@ -64,5 +64,6 @@ export function serializeToPCF(components) {
         lines.push(''); // blank line between components
     }
 
-    return lines.join('\n');
+    return lines.join('\r\n');
+
 }

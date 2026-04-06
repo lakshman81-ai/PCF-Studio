@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useReducer } from 'react';
+import React, { useState, useEffect, useReducer, useMemo } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { useStore } from '../../store/useStore';
 import { useAppContext } from '../../store/AppContext';
@@ -38,6 +38,42 @@ const DrawCanvas_DrawnComponents = ({ pipes, appSettings, selectedIndices, hidde
         <group>
             {pipes.map((pipe, i) => {
                 if (hiddenIndices.includes(i)) return null;
+
+                // SUPPORT uses supportCoor as its geometry anchor, not ep1/ep2
+                if (pipe.type === 'SUPPORT') {
+                    const coorSafe = toFinitePoint(pipe?.supportCoor);
+                    if (!coorSafe) return null;
+                    const r = Math.max((pipe.bore || 100) / 2, 50);
+                    const isSelected = selectedIndices.includes(i);
+                    const isRest = Object.values(pipe).some(v => typeof v === 'string' && ['CA150', 'REST'].includes(v.toUpperCase()));
+                    const isGui = Object.values(pipe).some(v => typeof v === 'string' && ['CA100', 'GUI'].includes(v.toUpperCase()));
+                    const supColor = isSelected ? appSettings.selectionColor : (isRest || isGui ? '#22c55e' : (colors['SUPPORT'] || '#10b981'));
+                    return (
+                        <group key={`dp-${i}`} position={[coorSafe.x, coorSafe.y, coorSafe.z]} onPointerDown={(e) => handlePointerDown(e, i)}>
+                            <mesh position={[0, r * 0.5, 0]}>
+                                <cylinderGeometry args={[0, r * 2, r, 8]} />
+                                <meshStandardMaterial color={supColor} transparent={translucentMode} opacity={translucentMode ? 0.3 : 1} depthWrite={!translucentMode} />
+                            </mesh>
+                            <mesh position={[0, -r * 0.25, 0]}>
+                                <cylinderGeometry args={[r, r, r * 0.5, 8]} />
+                                <meshStandardMaterial color={supColor} transparent={translucentMode} opacity={translucentMode ? 0.3 : 1} depthWrite={!translucentMode} />
+                            </mesh>
+                            {isGui && (
+                                <group position={[r * 1.5, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+                                    <mesh position={[0, r * 0.5, 0]}>
+                                        <cylinderGeometry args={[0, r * 1.5, r, 8]} />
+                                        <meshStandardMaterial color={supColor} transparent={translucentMode} opacity={translucentMode ? 0.3 : 1} depthWrite={!translucentMode} />
+                                    </mesh>
+                                    <mesh position={[0, -r * 0.25, 0]}>
+                                        <cylinderGeometry args={[r * 0.8, r * 0.8, r * 0.5, 8]} />
+                                        <meshStandardMaterial color={supColor} transparent={translucentMode} opacity={translucentMode ? 0.3 : 1} depthWrite={!translucentMode} />
+                                    </mesh>
+                                </group>
+                            )}
+                        </group>
+                    );
+                }
+
                 const ep1Safe = toFinitePoint(pipe?.ep1);
                 const ep2Safe = toFinitePoint(pipe?.ep2);
                 if (!ep1Safe || !ep2Safe) return null;
@@ -122,24 +158,6 @@ const DrawCanvas_DrawnComponents = ({ pipes, appSettings, selectedIndices, hidde
                         </group>
                     );
                 }
-                if (pipe.type === 'SUPPORT') {
-                    const r = pipe.bore / 2;
-                    return (
-                        <group key={`dp-${i}`} position={mid} quaternion={quat} onPointerDown={(e) => handlePointerDown(e, i)}>
-                            <group position={[0, -(r + dist / 2), 0]}>
-                                <mesh position={[0, dist / 4, 0]}>
-                                    <cylinderGeometry args={[0, r * 2, dist / 2, 8]} />
-                                    <meshStandardMaterial color={getCol("#10b981")} />
-                                </mesh>
-                                <mesh position={[0, -dist / 4, 0]}>
-                                   <cylinderGeometry args={[r, r, dist / 2, 8]} />
-                                   <meshStandardMaterial color={getCol("#10b981")} />
-                                </mesh>
-                            </group>
-                        </group>
-                    );
-                }
-
                 return (
                     <group key={`dp-${i}`} onPointerDown={(e) => handlePointerDown(e, i)}>
                         <mesh position={mid} quaternion={quat}>
@@ -995,12 +1013,16 @@ const DrawCanvas_EndpointSnapLayer = ({ activeTool, drawnPipes, dcDispatch, appS
                 const pts = [];
                 if (row.ep1) pts.push(new THREE.Vector3(parseFloat(row.ep1.x), parseFloat(row.ep1.y), parseFloat(row.ep1.z)));
                 if (row.ep2) pts.push(new THREE.Vector3(parseFloat(row.ep2.x), parseFloat(row.ep2.y), parseFloat(row.ep2.z)));
-                return pts.map((pt, ptIdx) => (
-                    <mesh key={`snap-${i}-${ptIdx}`} position={pt} renderOrder={999}>
-                        <sphereGeometry args={[20, 16, 16]} />
-                        <meshBasicMaterial color={appSettings.selectionColor} transparent opacity={0.5} depthTest={false} />
-                    </mesh>
-                ));
+                return (
+                    <React.Fragment key={`snapgroup-${i}`}>
+                        {pts.map((pt, ptIdx) => (
+                            <mesh key={`snap-${i}-${ptIdx}`} position={pt} renderOrder={999}>
+                                <sphereGeometry args={[20, 16, 16]} />
+                                <meshBasicMaterial color={appSettings.selectionColor} transparent opacity={0.5} depthTest={false} />
+                            </mesh>
+                        ))}
+                    </React.Fragment>
+                );
             })}
 
             {connectDraft && (() => {
@@ -1120,6 +1142,18 @@ export function DrawCanvasTab() {
         snapResolution: 100
     });
 
+    // Dynamic axes helper size — scales with scene extent so it's always visible
+    const axesSize = useMemo(() => {
+        if (!drawnPipes || drawnPipes.length === 0) return 1000;
+        let maxExtent = 0;
+        for (const p of drawnPipes) {
+            for (const pt of [p.ep1, p.ep2, p.supportCoor, p.cp]) {
+                if (pt) maxExtent = Math.max(maxExtent, Math.abs(pt.x), Math.abs(pt.y), Math.abs(pt.z));
+            }
+        }
+        return maxExtent > 1000 ? maxExtent * 0.05 : 1000;
+    }, [drawnPipes]);
+
     // Handle Esc globally inside Draw Canvas to cancel tool selection
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -1146,7 +1180,7 @@ export function DrawCanvasTab() {
     };
 
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)] w-full overflow-hidden bg-slate-950 rounded-lg shadow-inner relative mt-[-2rem]">
+        <div className="relative w-full overflow-hidden bg-slate-950 flex flex-col" style={{ height: 'calc(100vh - 180px)' }}>
             {/* Top Minimal Toolbar */}
             <div className="flex justify-between items-center px-4 py-2 bg-slate-900 border-b border-slate-700">
                 <div className="flex items-center gap-4 text-slate-200 font-bold text-sm tracking-wide">
@@ -1435,7 +1469,7 @@ export function DrawCanvasTab() {
                             ]}
                             position={[0, -1, 0]}
                         />
-                        <axesHelper args={[500]} />
+                        <axesHelper args={[axesSize]} />
 
                         <DrawCanvas_DrawnComponents pipes={drawnPipes} appSettings={appSettings} selectedIndices={state.multiSelectedIndices.length > 0 ? state.multiSelectedIndices : (selectedIndex !== null ? [selectedIndex] : [])} hiddenIndices={state.hiddenIndices} dcDispatch={dcDispatch} activeTool={activeTool} />
                         <DrawCanvas_DrawTool activeTool={activeTool} drawnPipes={drawnPipes} dcDispatch={dcDispatch} gridConfig={gridConfig} onCursorMove={setCursorWorldPos} />
@@ -1473,7 +1507,7 @@ export function DrawCanvasTab() {
                         customEventName="draw-canvas-set-view"
                         interactionMode={activeTool === 'PAN' ? 'PAN' : 'ROTATE'}
                         onInteractionModeChange={(mode) => dcDispatch({ type: 'SET_TOOL', payload: mode === 'PAN' ? 'PAN' : 'ORBIT' })}
-                        className="right-32"
+                        className="top-4 right-72"
                     />
                 </div>
 

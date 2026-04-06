@@ -412,7 +412,7 @@ export function StatusBar({ activeTab, activeStage }) {
     dispatch({ type: "SET_STATUS_MESSAGE", payload: msg });
   };
 
-  const verString = "Ver 24-03-2026 (1)";
+  const verString = "Ver 06-04-2026 (2)";
 
   const handleExecute = () => {
       setShowModal(false);
@@ -605,12 +605,18 @@ export function StatusBar({ activeTab, activeStage }) {
                 </button>
 
                 <button
-                  onClick={handleSmartFix}
-                  disabled={!canRunSmartFix}
+                  onClick={() => {
+                     if (!isValidationDone) {
+                         setShowModal(true);
+                     } else {
+                         handleSmartFix();
+                     }
+                  }}
+                  disabled={!isDataLoaded || isRunning || isWorkerRunning || hasRunSmartFix}
                   className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded font-medium disabled:opacity-50 transition-colors h-full"
-                  title={!isValidationDone ? "Run Phase 1 Validator first" : hasRunSmartFix ? "Smart Fix already executed" : "Analyse data and generate fix proposals"}
+                  title={!isValidationDone ? "Run Phase 1 Validator first" : hasRunSmartFix ? "Pass 1 already executed" : "Analyse data and generate Phase 1 fixes"}
                 >
-                  {isRunning ? "Analyzing..." : "Smart Fix 🔧"}
+                  {isRunning ? "Analyzing..." : "▶ Run Pass 1"}
                 </button>
 
                 <button

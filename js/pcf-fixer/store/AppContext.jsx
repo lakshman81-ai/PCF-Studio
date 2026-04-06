@@ -9,7 +9,7 @@ const initialState = {
     angleFormat: "degrees",
     enableBoreInchToMm: false,
     enabledChecks: JSON.parse(localStorage.getItem('enabledValidationChecks')) || {
-        V1: true, V2: true, V3: true, V4: true, V5: true,
+        V1: false, V2: true, V3: true, V4: true, V5: true, /* V1 disabled — handled by upstream sanitization */
         V6: true, V7: true, V8: true, V9: true, V10: true,
         V11: true, V12: true, V13: false, V14: true, V15: true,
         V16: true, V17: true, V18: true, V19: false, V20: true,

@@ -88,9 +88,19 @@ export class ExcelParser {
               sampleHeaders: headers.slice(0, 5)
             });
 
-            // Accept first sheet that produces at least 1 data row; otherwise keep as fallback
-            if (jsonData.length > 0) { bestResult = result; break; }
-            if (!bestResult) bestResult = result; // store as fallback even if 0 rows
+            // Score sheet name — prefer sheets whose name contains "Line" or "List"
+            const snLower = sheetName.toLowerCase();
+            let sheetScore = 0;
+            if (snLower.includes('line')) sheetScore++;
+            if (snLower.includes('list')) sheetScore++;
+
+            if (jsonData.length > 0) {
+              if (!bestResult || sheetScore > (bestResult._sheetScore || 0)) {
+                bestResult = { ...result, _sheetScore: sheetScore };
+              }
+              if (sheetScore >= 2) break; // Both "line" and "list" — perfect match, stop searching
+            }
+            if (!bestResult) bestResult = { ...result, _sheetScore: 0 }; // store fallback even if 0 rows
           }
 
           if (!bestResult) {
@@ -187,6 +197,39 @@ export class ExcelParser {
     }
     return bestRow;
   }
+
+  /**
+   * Select the best sheet from a workbook for Linelist import (Phase 1A).
+   * Scores sheet names: contains both 'line' AND 'list' = 2, either one = 1, no match = 0.
+   * Returns null sheet when no keyword match — caller handles user prompt.
+   * @param {string[]} sheetNames
+   * @returns {{ sheet: string|null, prompted: boolean, promptMessage: string }}
+   */
+  static _selectSheet(sheetNames) {
+    if (!sheetNames || sheetNames.length === 0) return { sheet: null, prompted: false, promptMessage: '' };
+    if (sheetNames.length === 1)               return { sheet: sheetNames[0], prompted: false, promptMessage: '' };
+
+    let bestSheet = null;
+    let bestScore = 0;
+
+    for (const name of sheetNames) {
+      const n = name.toLowerCase();
+      let score = 0;
+      if (n.includes('line') && n.includes('list')) score = 2;
+      else if (n.includes('line') || n.includes('list')) score = 1;
+      if (score > bestScore) { bestScore = score; bestSheet = name; }
+    }
+
+    if (bestSheet) return { sheet: bestSheet, prompted: false, promptMessage: '' };
+
+    // No keyword match — build a numbered list for the user prompt
+    const listStr = sheetNames.map((s, i) => `${i + 1}: ${s}`).join('\n');
+    return {
+      sheet: null,
+      prompted: true,
+      promptMessage: `No sheet matching "Line" or "List" was found.\n\nAvailable tabs:\n${listStr}\n\nEnter tab number or exact tab name:`,
+    };
+  }
 }
 
 /**
@@ -202,21 +245,42 @@ export class ExcelParserService {
           const data = new Uint8Array(e.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
           if (workbook.SheetNames.length === 0) {
-            reject(new Error("Excel file contains no sheets."));
+            reject(new Error('Excel file contains no sheets.'));
             return;
           }
-          const sheetName = workbook.SheetNames[0];
-          const sheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+          // ── Tab keyword matching (Phase 1A) ─────────────────────────────
+          const { sheet, prompted, promptMessage } = ExcelParser._selectSheet(workbook.SheetNames);
+          let selectedSheet = sheet;
+
+          if (!selectedSheet) {
+            // Prompt user for tab selection
+            const answer = window.prompt(promptMessage);
+            if (answer === null) { reject(new Error('Tab selection cancelled by user.')); return; }
+            const trimmed = answer.trim();
+            const byIndex = parseInt(trimmed, 10);
+            if (!isNaN(byIndex) && byIndex >= 1 && byIndex <= workbook.SheetNames.length) {
+              selectedSheet = workbook.SheetNames[byIndex - 1];
+            } else if (workbook.SheetNames.includes(trimmed)) {
+              selectedSheet = trimmed;
+            } else {
+              reject(new Error(`Tab "${trimmed}" not found. Please reload and try again.`)); return;
+            }
+          }
+
+          // ── Parse selected sheet ─────────────────────────────────────────
+          const sheetObj = workbook.Sheets[selectedSheet];
+          const jsonData = XLSX.utils.sheet_to_json(sheetObj, { header: 1, defval: '' });
           resolve(jsonData);
         } catch (err) {
-          reject(new Error("Failed to parse Excel file: " + err.message));
+          reject(new Error('Failed to parse Excel file: ' + err.message));
         }
       };
-      reader.onerror = () => reject(new Error("Failed to read file."));
+      reader.onerror = () => reject(new Error('Failed to read file.'));
       reader.readAsArrayBuffer(file);
     });
   }
+
 }
 
 export const excelParser = new ExcelParserService();

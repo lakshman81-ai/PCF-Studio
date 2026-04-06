@@ -306,7 +306,8 @@ export function generatePCFText(dataTable, config) {
           caValue = row[`CA${n}`];
         }
         if (caValue !== undefined && caValue !== null && caValue !== "") {
-          lines.push(`    COMPONENT-ATTRIBUTE${n}    ${caValue}`);
+          const safeVal = String(caValue).replace(/^=+/, '').trim();
+          if (safeVal) lines.push(`    COMPONENT-ATTRIBUTE${n}    ${safeVal}`);
         }
       });
     }

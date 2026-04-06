@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useReducer } from 'react';
+import React, { useState, useEffect, useReducer, useMemo } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { useStore } from '/js/pcf-fixer-runtime/store/useStore.js';
 import { useAppContext } from '/js/pcf-fixer-runtime/store/AppContext.js';
@@ -51,6 +51,28 @@ const DrawCanvas_DrawnComponents = ({
   return _jsx("group", {
     children: pipes.map((pipe, i) => {
       if (hiddenIndices.includes(i)) return null;
+
+      // SUPPORT uses supportCoor as geometry anchor, not ep1/ep2
+      if (pipe.type === 'SUPPORT') {
+        const coorSafe = toFinitePoint(pipe?.supportCoor);
+        if (!coorSafe) return null;
+        const r = Math.max((pipe.bore || 100) / 2, 50);
+        const supColor = selectedIndices.includes(i) ? appSettings.selectionColor : (colors['SUPPORT'] || '#10b981');
+        return _jsxs("group", {
+          position: [coorSafe.x, coorSafe.y, coorSafe.z],
+          onPointerDown: e => handlePointerDown(e, i),
+          children: [_jsxs("mesh", {
+            position: [0, r * 0.5, 0],
+            children: [_jsx("cylinderGeometry", { args: [0, r * 2, r, 8] }),
+              _jsx("meshStandardMaterial", { color: supColor })]
+          }), _jsxs("mesh", {
+            position: [0, -r * 0.25, 0],
+            children: [_jsx("cylinderGeometry", { args: [r, r, r * 0.5, 8] }),
+              _jsx("meshStandardMaterial", { color: supColor })]
+          })]
+        }, `dp-${i}`);
+      }
+
       const ep1Safe = toFinitePoint(pipe?.ep1);
       const ep2Safe = toFinitePoint(pipe?.ep2);
       if (!ep1Safe || !ep2Safe) return null;
@@ -183,32 +205,6 @@ const DrawCanvas_DrawnComponents = ({
               })]
             })]
           })]
-        }, `dp-${i}`);
-      }
-      if (pipe.type === 'SUPPORT') {
-        const r = pipe.bore / 2;
-        return _jsx("group", {
-          position: mid,
-          quaternion: quat,
-          onPointerDown: e => handlePointerDown(e, i),
-          children: _jsxs("group", {
-            position: [0, -(r + dist / 2), 0],
-            children: [_jsxs("mesh", {
-              position: [0, dist / 4, 0],
-              children: [_jsx("cylinderGeometry", {
-                args: [0, r * 2, dist / 2, 8]
-              }), _jsx("meshStandardMaterial", {
-                color: getCol("#10b981")
-              })]
-            }), _jsxs("mesh", {
-              position: [0, -dist / 4, 0],
-              children: [_jsx("cylinderGeometry", {
-                args: [r, r, dist / 2, 8]
-              }), _jsx("meshStandardMaterial", {
-                color: getCol("#10b981")
-              })]
-            })]
-          })
         }, `dp-${i}`);
       }
       return _jsx("group", {
@@ -1447,6 +1443,18 @@ export function DrawCanvasTab() {
     snapResolution: 100
   });
 
+  // Dynamic axes helper size — scales with scene extent so it's always visible
+  const axesSize = useMemo(() => {
+    if (!drawnPipes || drawnPipes.length === 0) return 1000;
+    let maxExtent = 0;
+    for (const p of drawnPipes) {
+      for (const pt of [p.ep1, p.ep2, p.supportCoor, p.cp]) {
+        if (pt) maxExtent = Math.max(maxExtent, Math.abs(pt.x), Math.abs(pt.y), Math.abs(pt.z));
+      }
+    }
+    return maxExtent > 1000 ? maxExtent * 0.05 : 1000;
+  }, [drawnPipes]);
+
   // Handle Esc globally inside Draw Canvas to cancel tool selection
   useEffect(() => {
     const handleKeyDown = e => {
@@ -2302,7 +2310,7 @@ export function DrawCanvasTab() {
             args: [100000, Math.round(100000 / gridConfig.density), new THREE.Color('#3a4255').multiplyScalar(gridConfig.opacity * 2), new THREE.Color('#252a3a').multiplyScalar(gridConfig.opacity * 2)],
             position: [0, -1, 0]
           }), _jsx("axesHelper", {
-            args: [500]
+            args: [axesSize]
           }), _jsx(DrawCanvas_DrawnComponents, {
             pipes: drawnPipes,
             appSettings: appSettings,

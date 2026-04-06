@@ -2061,6 +2061,98 @@ body {
   font-style: italic;
 }
 
+/* ── Support Coordinates panel ───────────────────────────────── */
+.c2p-support-coords {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border: 1px solid var(--steel);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.75rem 0.5rem;
+  background: var(--bg-1);
+  flex-shrink: 0;
+}
+.c2p-sc-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.c2p-sc-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-main);
+  flex: 1;
+  letter-spacing: 0.02em;
+}
+.c2p-sc-icon-btn {
+  font-size: 0.68rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  border: 1px solid var(--steel);
+  background: transparent;
+  cursor: pointer;
+}
+.c2p-sc-icon-btn:hover { border-color: var(--amber); color: var(--amber); }
+.c2p-sc-textarea {
+  width: 100%;
+  height: 96px;
+  resize: vertical;
+  background: var(--bg-0);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-family: var(--font-code);
+  font-size: 0.75rem;
+  padding: 0.4rem 0.5rem;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+.c2p-sc-textarea:focus { outline: none; border-color: var(--amber); }
+.c2p-sc-textarea::placeholder { color: var(--text-muted); white-space: pre; }
+.c2p-sc-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.c2p-sc-clear-btn {
+  font-size: 0.68rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+}
+.c2p-sc-clear-btn:hover { color: var(--accent-red, #ef4444); }
+.c2p-sc-count {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-family: var(--font-code);
+  margin-left: auto;
+}
+.c2p-sc-errors {
+  font-size: 0.68rem;
+  color: var(--accent-red, #ef4444);
+  font-family: var(--font-code);
+  white-space: pre-wrap;
+  line-height: 1.4;
+}
+
+/* ── Canvas preview mount ─────────────────────────────────────── */
+.c2p-canvas-mount {
+  width: 100%;
+  height: 560px;
+  margin-top: 0.75rem;
+  border: 1px solid var(--steel);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #fff;
+  flex-shrink: 0;
+}
+.c2p-canvas-mount:empty { display: none; }
+
 /* ── Preview table wrapper ────────────────────────────────────── */
 .c2p-preview-wrap {
   flex: 1;

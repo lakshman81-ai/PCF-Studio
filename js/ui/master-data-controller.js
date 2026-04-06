@@ -32,11 +32,15 @@ export class MasterDataController {
     // Initial load of smart map UI if headers exist in storage
     const state = getState("linelist");
     if (state && state.headers && state.headers.length > 0) {
-      this.renderSmartMapUI(state.headers);
-      this.populateSourceSelect(state.headers);
-      this.renderX1Builder(state.headers);
-      document.getElementById("linelist-mapping-section").style.display = "";
-      document.getElementById("linelist-attr-section").style.display = "";
+      // Zero-Trust: sanitize headers before use — stored state may carry null/undefined entries
+      const safeHeaders = state.headers.filter(h => h !== null && h !== undefined && String(h).trim() !== '');
+      if (safeHeaders.length > 0) {
+        this.renderSmartMapUI(safeHeaders);
+        this.populateSourceSelect(safeHeaders);
+        this.renderX1Builder(safeHeaders);
+        document.getElementById("linelist-mapping-section").style.display = "";
+        document.getElementById("linelist-attr-section").style.display = "";
+      }
     }
 
     // Subscribe to DataManager changes
@@ -1655,6 +1659,9 @@ export class MasterDataController {
 
       // Populate Headers
       headers.forEach((h) => {
+        // Zero-Trust: skip null/undefined/empty headers — state may carry stale malformed entries
+        if (h === null || h === undefined || String(h).trim() === '') return;
+
         const opt = document.createElement("option");
         opt.value = h;
         opt.dataset.preview = colPreview[h] || h;  // store preview for dropdown display

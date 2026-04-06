@@ -6,7 +6,7 @@
  * Schema version: used to detect stale localStorage configs.
  */
 
-export const SCHEMA_VERSION = "1.2.1"; // Bump to force config refresh
+export const SCHEMA_VERSION = "1.2.2"; // Bumped: added enabledChecks, froze V1/V13
 
 export const DEFAULT_CONFIG = {
   _version: SCHEMA_VERSION,
@@ -396,5 +396,17 @@ export const DEFAULT_CONFIG = {
       defaultLiquid: 1000,       // Default if Liquid is null/0
       defaultGas: 1.2
     }
+  },
+
+  // 12. VALIDATOR RULE ENABLE/DISABLE FLAGS
+  // false = rule is FROZEN and must not be used for auto-fix or acceptance decisions.
+  // Reason is documented inline. Do NOT re-enable without a full rule rewrite.
+  enabledChecks: {
+    V1:  false, // FROZEN — current impl invents geometry (assigns fixingAction on zero-coord).
+                //          Zero (0,0,0) must be flagged only; geometry must never be synthesised
+                //          inside a validator. Violates Core Doctrine 1 (Native Topology Preservation).
+    V13: false, // FROZEN — wrong semantic layer. Spec §12 bore=0 rule applies at CO-ORDS emission
+                //          time only. Validating datatable row.bore against 0 is incorrect;
+                //          the datatable bore reflects actual pipe bore at the support location.
   },
 };

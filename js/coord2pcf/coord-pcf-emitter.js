@@ -70,7 +70,7 @@ function emitPipe(comp, seqNo, pipelineRef, ca, dp) {
   const length = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
   const lines = [
-    ...msgSq(['PIPE', `RefNo:=COORD_${seqNo}`, `SeqNo:${seqNo}`, `Length:${fmt(length, 2)}MM`]),
+    ...msgSq(['PIPE', `RefNo:=COORD_${seqNo}`, `SeqNo:${seqNo}`, `LENGTH=${fmt(length, 2)}MM`]),
     'PIPE',
     `${INDENT}END-POINT  ${fmtCoord(comp.ep1, b, dp)}`,
     `${INDENT}END-POINT  ${fmtCoord(comp.ep2, b, dp)}`,
@@ -95,7 +95,7 @@ function emitBend(comp, seqNo, ca, dp) {
     `${INDENT}<SKEY>  BEBW`,
     `${INDENT}ANGLE ${angle}`,
     `${INDENT}BEND-RADIUS ${fmt(radius, 4)}`,
-    ...buildCA(ca, true),
+    ...buildCA(ca, false),
     '',
   ];
 }
@@ -127,6 +127,7 @@ function emitSupport(comp, seqNo, dp) {
     'SUPPORT',
     `${INDENT}CO-ORDS  ${fmtCoord(coords, 0, dp)}`,
     `${INDENT}<SUPPORT_NAME>  ${supName}`,
+    ...(comp.supportGuid ? [`${INDENT}<SUPPORT_GUID>  UCI:${String(comp.supportGuid).replace(/^UCI:/i, '')}`] : []),
     '',
   ];
 }

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>PCF Studio</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231e293b'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='18' font-family='monospace' fill='%2338bdf8'>P</text></svg>">
 
   <script type="importmap">
   {
@@ -206,6 +207,24 @@
             <span class="c2p-hint">Review coordinates below before generating PCF</span>
           </div>
 
+          <!-- Support Coordinates -->
+          <div class="c2p-support-coords">
+            <div class="c2p-sc-header">
+              <span class="c2p-sc-title">📍 Support Coordinates</span>
+              <button class="btn btn-sm c2p-sc-icon-btn" id="c2p-sc-import-btn" title="Import from file">↑ Import</button>
+              <input type="file" id="c2p-sc-file" accept=".txt,.csv,.json" style="display:none">
+            </div>
+            <textarea id="c2p-sc-textarea" class="c2p-sc-textarea"
+              placeholder="One point per line:&#10;  x, y&#10;  x y&#10;  [x, y]&#10;or paste a JSON array [[x,y],…]"></textarea>
+            <div class="c2p-sc-actions">
+              <button class="btn btn-secondary btn-sm" id="c2p-sc-preview-btn">👁 Preview</button>
+              <button class="btn btn-secondary btn-sm" id="c2p-sc-apply-btn">✔ Apply</button>
+              <button class="btn btn-sm c2p-sc-clear-btn" id="c2p-sc-clear-btn">✕ Clear</button>
+              <span class="c2p-sc-count" id="c2p-sc-count"></span>
+            </div>
+            <div id="c2p-sc-errors" class="c2p-sc-errors"></div>
+          </div>
+
           <!-- Preview table -->
           <div id="c2p-preview-wrap" class="c2p-preview-wrap">
             <p style="color:var(--text-muted);font-size:0.78rem;padding:0.5rem">No points parsed yet.</p>
@@ -256,6 +275,9 @@
             <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.68rem;font-family:var(--font-code);color:var(--text-muted);margin-left:0.5rem;cursor:pointer;" title="Skip bend/tee geometry — emit raw pipe segments only (topology debug)">
               <input type="checkbox" id="c2p-pipe-only" style="accent-color:var(--amber)"> Pipes Only
             </label>
+            <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.68rem;font-family:var(--font-code);color:var(--text-muted);margin-left:0.5rem;cursor:pointer;" title="Run support probe and include REST supports at segmented pipe hit points (uncheck to skip all support coordinates)">
+              <input type="checkbox" id="c2p-rest-support" checked style="accent-color:var(--accent-green,#22c55e)"> Rest support at segmented pipe
+            </label>
           </div>
 
 
@@ -268,6 +290,9 @@
         </div>
 
       </div>
+
+      <!-- ── Canvas Preview ─────────────────────────────────────────────── -->
+      <div id="c2p-canvas-mount" class="c2p-canvas-mount"></div>
 
       <!-- ── Collapsible Debug Panel ──────────────────────────────────── -->
       <div class="c2p-debug">

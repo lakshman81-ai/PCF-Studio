@@ -353,6 +353,41 @@ const ImmutableComponents = () => {
   if (elements.length === 0) return null;
   return _jsx("group", {
     children: elements.map((el, i) => {
+      // SUPPORT: positioned by supportCoor, not ep1/ep2
+      if ((el.type || '').toUpperCase() === 'SUPPORT') {
+        const coor = el.supportCoor;
+        if (!coor) return null;
+        const r = Math.max((el.bore || 100) / 2, 50);
+        const isSelected = multiSelectedIds.includes(el._rowIndex);
+        const isRest = Object.values(el).some(v => typeof v === 'string' && ['CA150', 'REST'].includes(v.toUpperCase()));
+        const isGui  = Object.values(el).some(v => typeof v === 'string' && ['CA100', 'GUI'].includes(v.toUpperCase()));
+        const finalColor = isSelected ? appSettings.selectionColor : (isRest || isGui ? '#22c55e' : typeColor(el.type, appSettings));
+        const onSuppClick = e => {
+          if (e.nativeEvent) e.nativeEvent.__handled3D = true;
+          if (useStore.getState().canvasMode !== 'VIEW') return;
+          e.stopPropagation();
+          if (e.ctrlKey || e.metaKey) { useStore.getState().toggleMultiSelect(el._rowIndex); }
+          else { useStore.getState().clearMultiSelect(); useStore.getState().setSelected(el._rowIndex); useStore.getState().setMultiSelect([el._rowIndex]); }
+        };
+        return _jsxs("group", {
+          position: [coor.x, coor.y, coor.z],
+          onPointerDown: onSuppClick,
+          children: [
+            _jsxs("mesh", { position: [0, r * 0.5, 0], children: [
+              _jsx("cylinderGeometry", { args: [0, r * 2, r, 8] }),
+              _jsx("meshStandardMaterial", { color: finalColor, transparent: isTranslucent, opacity: isTranslucent ? 0.3 : 1, depthWrite: !isTranslucent })
+            ]}),
+            _jsxs("mesh", { position: [0, -r * 0.25, 0], children: [
+              _jsx("cylinderGeometry", { args: [r, r, r * 0.5, 8] }),
+              _jsx("meshStandardMaterial", { color: finalColor, transparent: isTranslucent, opacity: isTranslucent ? 0.3 : 1, depthWrite: !isTranslucent })
+            ]}),
+            isGui ? _jsxs("group", { position: [r * 1.5, 0, 0], rotation: [0, 0, Math.PI / 2], children: [
+              _jsxs("mesh", { position: [0, r * 0.5, 0], children: [_jsx("cylinderGeometry", { args: [0, r * 1.5, r, 8] }), _jsx("meshStandardMaterial", { color: finalColor })] }),
+              _jsxs("mesh", { position: [0, -r * 0.25, 0], children: [_jsx("cylinderGeometry", { args: [r * 0.8, r * 0.8, r * 0.5, 8] }), _jsx("meshStandardMaterial", { color: finalColor })] })
+            ]}) : null
+          ]
+        }, `supp-${i}`);
+      }
       if (!el.ep1 || !el.ep2) return null;
       const vecA = new THREE.Vector3(el.ep1.x, el.ep1.y, el.ep1.z);
       const vecB = new THREE.Vector3(el.ep2.x, el.ep2.y, el.ep2.z);
@@ -554,91 +589,6 @@ const ImmutableComponents = () => {
           })]
         }, `ol-${i}`);
       }
-      if (type === 'SUPPORT') {
-        const isRest = ['CA150', 'REST'].includes((el.type || '').toUpperCase()) || Object.values(el).some(v => typeof v === 'string' && ['CA150', 'REST'].includes(v.toUpperCase()));
-        const isGui = ['CA100', 'GUI'].includes((el.type || '').toUpperCase()) || Object.values(el).some(v => typeof v === 'string' && ['CA100', 'GUI'].includes(v.toUpperCase()));
-        const finalColor = isSelected ? appSettings.selectionColor : isRest || isGui ? '#22c55e' : color === '#3b82f6' ? '#94a3b8' : color;
-        return _jsxs("group", {
-          position: mid,
-          quaternion: quat,
-          onPointerDown: handleSelect,
-          children: [_jsxs("group", {
-            position: [0, -(r + dist / 2), 0],
-            children: [_jsxs("mesh", {
-              position: [0, dist / 4, 0],
-              children: [_jsx("cylinderGeometry", {
-                args: [0, r * 2, dist / 2, 8]
-              }), _jsx("meshStandardMaterial", {
-                color: finalColor,
-                transparent: isTranslucent,
-                opacity: isTranslucent ? 0.3 : 1,
-                depthWrite: !isTranslucent
-              })]
-            }), _jsxs("mesh", {
-              position: [0, -dist / 4, 0],
-              children: [_jsx("cylinderGeometry", {
-                args: [r, r, dist / 2, 8]
-              }), _jsx("meshStandardMaterial", {
-                color: finalColor,
-                transparent: isTranslucent,
-                opacity: isTranslucent ? 0.3 : 1,
-                depthWrite: !isTranslucent
-              })]
-            })]
-          }), isGui && _jsxs(_Fragment, {
-            children: [_jsxs("group", {
-              position: [r + dist / 4, 0, 0],
-              rotation: [0, 0, Math.PI / 2],
-              children: [_jsxs("mesh", {
-                position: [0, dist / 4, 0],
-                children: [_jsx("cylinderGeometry", {
-                  args: [0, r * 1.5, dist / 2, 8]
-                }), _jsx("meshStandardMaterial", {
-                  color: finalColor,
-                  transparent: isTranslucent,
-                  opacity: isTranslucent ? 0.3 : 1,
-                  depthWrite: !isTranslucent
-                })]
-              }), _jsxs("mesh", {
-                position: [0, -dist / 4, 0],
-                children: [_jsx("cylinderGeometry", {
-                  args: [r, r, dist / 2, 8]
-                }), _jsx("meshStandardMaterial", {
-                  color: finalColor,
-                  transparent: isTranslucent,
-                  opacity: isTranslucent ? 0.3 : 1,
-                  depthWrite: !isTranslucent
-                })]
-              })]
-            }), _jsxs("group", {
-              position: [-(r + dist / 4), 0, 0],
-              rotation: [0, 0, -Math.PI / 2],
-              children: [_jsxs("mesh", {
-                position: [0, dist / 4, 0],
-                children: [_jsx("cylinderGeometry", {
-                  args: [0, r * 1.5, dist / 2, 8]
-                }), _jsx("meshStandardMaterial", {
-                  color: finalColor,
-                  transparent: isTranslucent,
-                  opacity: isTranslucent ? 0.3 : 1,
-                  depthWrite: !isTranslucent
-                })]
-              }), _jsxs("mesh", {
-                position: [0, -dist / 4, 0],
-                children: [_jsx("cylinderGeometry", {
-                  args: [r, r, dist / 2, 8]
-                }), _jsx("meshStandardMaterial", {
-                  color: finalColor,
-                  transparent: isTranslucent,
-                  opacity: isTranslucent ? 0.3 : 1,
-                  depthWrite: !isTranslucent
-                })]
-              })]
-            })]
-          })]
-        }, `supp-${i}`);
-      }
-
       // Fallback: generic cylinder
       return _jsxs("mesh", {
         position: mid,
@@ -3550,13 +3500,13 @@ export function CanvasTab() {
         zoom: 0.2,
         near: 0.1,
         far: 500000
-      }) : _jsx(PerspectiveCamera, {
+      }, "ortho") : _jsx(PerspectiveCamera, {
         makeDefault: true,
         position: [5000, 5000, 5000],
         fov: appSettings.cameraFov,
         near: appSettings.cameraNear || 1,
         far: appSettings.cameraFar || 500000
-      }), _jsx("color", {
+      }, "persp"), _jsx("color", {
         attach: "background",
         args: [appSettings.backgroundColor || '#020617']
       }), _jsx("ambientLight", {

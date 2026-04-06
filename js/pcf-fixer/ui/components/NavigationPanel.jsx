@@ -6,7 +6,7 @@ export const NavigationPanel = ({
     customEventName = 'canvas-set-view',
     interactionMode: controlledInteractionMode,
     onInteractionModeChange,
-    className = '',
+    className = 'top-4 right-4',
 }) => {
     const storeInteractionMode = useStore(state => state.interactionMode);
     const setStoreInteractionMode = useStore(state => state.setInteractionMode);
@@ -18,7 +18,7 @@ export const NavigationPanel = ({
     };
 
     return (
-        <div className={`absolute top-4 right-4 z-50 flex flex-col gap-1 bg-slate-900/80 backdrop-blur border border-slate-700 p-1 rounded shadow-lg pointer-events-auto ${className}`.trim()}>
+        <div className={`absolute z-50 flex flex-col gap-1 bg-slate-900/80 backdrop-blur border border-slate-700 p-1 rounded shadow-lg pointer-events-auto ${className}`.trim()}>
             <button
                 onClick={() => setInteractionMode(interactionMode === 'PAN' ? 'ROTATE' : 'PAN')}
                 className={`w-8 h-8 flex items-center justify-center rounded transition ${interactionMode === 'PAN' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}

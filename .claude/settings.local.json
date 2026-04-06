@@ -39,7 +39,14 @@
       "WebFetch(domain:steeltubes.co.in)",
       "Bash(dir \"C:\\\\Code\\\\PCF-Studio\\\\dist\" /b)",
       "Bash(dir \"C:\\\\Code\\\\PCF-Studio\\\\node_modules\\\\@vitejs\" /b)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(curl -s http://localhost:5173/canvas.jsx)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:5173/canvas.jsx\")",
+      "Bash(node --check js/pcf-fixer/ui/tabs/DrawCanvasTab.jsx)",
+      "Bash(node --check js/pcf-fixer-runtime/ui/tabs/DrawCanvasTab.js)",
+      "Bash(node --check js/services/excel-parser.js)",
+      "Bash(node --check js/pcf-fixer/engine/Validator.js)"
     ],
     "deny": [],
     "ask": []

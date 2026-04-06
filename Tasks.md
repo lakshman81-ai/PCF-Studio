@@ -528,3 +528,41 @@
 [Record]=GitHub Push Confirmation
 [zip file (if true)]= N/A
 [Implementation Pending/Improvements Identified for future]: None.
+
+---
+
+## Flaw Logging & Bug Register
+
+[05-04-2026 19:23:00]
+
+| ID       | Severity  | Component            | Issue Description                                                                                          | Expected Outcome                                                              | Status   |
+|----------|-----------|----------------------|------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|----------|
+| BUG-101  | Low       | React (Console)      | "Each child in a list should have a unique 'key' prop" warnings in MainApp, DataTableTab, and CanvasTab.  | Clean console logs without React reconciliation warnings.                     | Open     |
+| FLAW-102 | Minor     | Canvas Renderer      | THREE.WebGLRenderer: Context Lost logged during SettingsModal transitions.                                 | Continuous render state without context loss logs.                            | Logged   |
+| FLAW-103 | UI/UX     | Overlay              | The "Toggle Side Panel" icon is present but effect on complex layouts needs deeper responsive validation.  | Smooth collapse/expand of the topology metrics panel.                         | Verified |
+
+### Register Notes
+
+**BUG-101** — Root cause: row keys in list renders are using array index fallback or non-stable identifiers. Fix path: audit all `.map()` calls in `MainApp.js`, `DataTableTab.js` (both runtime and fixer variants), and `CanvasTab.js` to ensure each JSX element carries a stable unique `key` prop (e.g. `row._rowIndex` or stable `id`). Priority: Low — cosmetic console noise, no functional regression.
+
+**FLAW-102** — Root cause: WebGL context loss is triggered when the `<canvas>` element is temporarily unmounted or displaced during modal DOM transitions. Fix path: ensure `SettingsModal` uses CSS visibility/opacity transitions instead of DOM unmount/remount, and consider wrapping the R3F `<Canvas>` with a `preserveDrawingBuffer` guard. Priority: Minor — does not break rendering, but may leave ghost state in GPU driver.
+
+**FLAW-103** — Status "Verified" means the toggle is confirmed present and functional under standard viewport geometry. Responsive validation under narrow viewports (< 900px wide) and with the PCF Fixer iframe active is still pending. No code change required at this time.
+
+[05-04-2026 20:05:00] [Task 71] [PCF module-wise syntax gap assessment against PCF Syntax Master v1.2 and PCF Fixer V1-V20 audit] [Analysis complete] [Tasks.md, public/chat commands/Chat_05-04-2026.md] [In-chat report with module-wise gaps and action list] [N/A] [N/A]
+
+[Task 71] [Task Description]= "PCF is generation using several modules , most of them are misaligned to above sytax ... Prepare module wise report and respective actions ... check all its logic from V1 to V20+"
+[Implementation]=Inspected the active PCF generator paths (`converter`, `output`, `coord2pcf`, `viewer pcf-builder`) and the dedicated `pcf-fixer` validator/fixer stack against the supplied PCF Syntax Master v1.2 rules. Identified module-level deviations in header generation, MESSAGE-SQUARE formatting, SUPPORT serialization, CA injection, SKEY token emission, geometry fallback coverage, CRLF enforcement, and validator rule mapping. Confirmed that validator identifiers V1 and V13 are currently implemented with incorrect behavior relative to the supplied rulebook and must be flagged as invalid for future fixing work.
+[Updated modules]=Tasks.md, public/chat commands/Chat_05-04-2026.md
+[Record]=In-chat report with module-wise gaps and action list
+[zip file (if true)]= N/A
+[Implementation Pending/Improvements Identified for future]: Consolidate all PCF emission through one canonical serializer; move fallback geometry rules into shared pure functions; replace the current V1/V13 implementations in the PCF Fixer validator before enabling auto-fix flows from those rules.
+
+[05-04-2026 20:29:00] [Task 72] [Code-verified validation of PCF audit against live source + PCF Syntax Master v1.2] [Done] [Tasks.md] [pcf_audit_validation.md artifact] [N/A] [N/A]
+
+[Task 72] [Task Description]= "review,validate this" (module-wise PCF audit assessment vs PCF Syntax Master v1.2 and V1-V20 checklist)
+[Implementation]=Direct source code inspection of all 5 PCF emission paths. Confirmed every primary finding. Found 5 additional gaps: GAP-A ca-builder.js injects PIPELINE-REFERENCE inside all component types (not just PIPE); GAP-B COMPONENT-ATTRIBUTE99 non-spec field emitted into all PCFs; GAP-C ca-builder emits 'Undefined'/'0' placeholders instead of omitting blank CA lines; GAP-D coord-pcf-emitter enables CA8 weight for BEND; GAP-E support.js constructs two MESSAGE-SQUARE blocks. V1 confirmed wrong (invents geometry by assigning fixingAction on zero-coord detection), V13 confirmed wrong (validates datatable bore vs CO-ORDS emission bore=0 rule - wrong layer). Both FROZEN/DISABLED.
+[Updated modules]=Tasks.md, pcf_audit_validation.md (new artifact)
+[Record]=Code inspection: header-writer.js:36, pipe.js:68, bend.js:87, olet.js:19/59, tee.js:110/120, support.js:49/77/84/87, ca-builder.js:65/244, 3DV_PCFSerializer.js:44/56/67, coord-pcf-emitter.js:73/98/131, Validator.js:107/149
+[zip file (if true)]= N/A
+[Implementation Pending/Improvements Identified for future]: Execute remediation register — FREEZE V1/V13 first, then CRITICAL fixes (header orphan MESSAGE-SQUARE removal, PIPELINE-REFERENCE export prefix, support bore=0 and no-CA97 enforcement, 3DV CRLF + 4-token coords), then HIGH SKEY token normalization and CA scope guards.
