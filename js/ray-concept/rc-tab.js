@@ -30,6 +30,9 @@ const rcState = {
   injectedPipes:   [],   // Stage 3 bridges
   pipelineRef:     '',   // derived from Stage 1
   isoMetricPcfText:'',   // Stage 4 output
+  isoPcfCsvText:   '',   // ISOPCF CSV preview (gasket/misc dropped)
+  isoPcfComponents:[],   // post-drop component list for ISOPCF CSV
+  engineMode:      localStorage.getItem('pcfStudio.engineMode') || 'legacy',
   finalComponents: [],   // rcState.components + normalised bridge pipes (post-S3)
   finalCsv2DText:  '',   // emit2DCSV(finalComponents, cfg)
   stageStatus: { s1: 'idle', s2: 'idle', s3: 'idle', s4: 'idle' },
@@ -116,6 +119,11 @@ function buildPanelHTML() {
     <!-- Run All + Config -->
     <button id="rc-btn-run-all" style="${pillPrimary};margin-left:auto;align-self:flex-end" disabled>${ICO.play} Run All</button>
     <button id="rc-btn-config-toggle" style="${ghost};align-self:flex-end">${ICO.settings} Settings</button>
+    <!-- Engine Mode Toggle -->
+    <label id="rc-engine-mode-toggle" style="display:flex;align-items:center;gap:6px;font-size:0.68rem;font-family:var(--font-code);color:var(--text-muted);cursor:pointer;padding:2px 6px;border:1px solid var(--steel);border-radius:var(--radius-sm);white-space:nowrap" title="Switch between legacy emitters and the unified Common PCF Builder engine">
+      <input type="checkbox" id="rc-chk-engine-mode" style="accent-color:var(--accent)" ${rcState.engineMode === 'common' ? 'checked' : ''}>
+      <span id="rc-engine-mode-label">${rcState.engineMode === 'common' ? 'Common PCF Builder' : 'Legacy Mode'}</span>
+    </label>
   </div>
 
   <!-- ── Tier 2: Actions ── -->
@@ -222,10 +230,12 @@ function buildPanelHTML() {
           <button class="rc-preview-btn" data-preview="connmap"         style="${previewBtnStyle(false)}">Conn Map</button>
           <button class="rc-preview-btn" data-preview="final2dcsv"      style="${previewBtnStyle(false)}">Final 2D CSV</button>
           <button class="rc-preview-btn" data-preview="isofinal"        style="${previewBtnStyle(false)}">Isometric PCF</button>
+          <button class="rc-preview-btn" data-preview="isopcfcsv"       style="${previewBtnStyle(false)}">ISOPCF CSV</button>
         </div>
+        <button id="rc-btn-isopcf-info" title="PCF generation rules used for ISOPCF CSV" style="display:none;align-items:center;padding:3px 6px;cursor:pointer;border:1px solid var(--steel);border-radius:5px;background:transparent;color:var(--text-muted);margin-left:4px;font-size:11px;font-weight:600">ℹ</button>
         <span id="rc-diff-badge" style="font-size:0.65rem;font-family:var(--font-inter);padding:1px 6px;border-radius:4px;display:none;margin-left:4px"></span>
-        <button id="rc-btn-copy-preview" style="display:inline-flex;align-items:center;padding:4px 6px;cursor:pointer;border:1px solid var(--steel);border-radius:5px;background:transparent;color:var(--text-muted);margin-left:4px;transition:all 150ms ease" title="Copy to clipboard">
-          ${ico('<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>', 12)}
+        <button id="rc-btn-copy-preview" style="display:inline-flex;align-items:center;padding:4px 8px;cursor:pointer;border:1px solid var(--steel);border-radius:5px;background:transparent;color:var(--text-muted);margin-left:4px;transition:all 150ms ease;font-weight:600" title="Copy to clipboard">
+          ${ico('<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>', 16)}
         </button>
       </div>
 
@@ -285,6 +295,15 @@ function wireEvents(root) {
   root.querySelector('#rc-btn-s4').addEventListener('click', () => runS4(root));
   root.querySelector('#rc-btn-run-all').addEventListener('click', () => runAll(root));
 
+  // Engine mode toggle
+  root.querySelector('#rc-chk-engine-mode')?.addEventListener('change', e => {
+    const mode = e.target.checked ? 'common' : 'legacy';
+    rcState.engineMode = mode;
+    localStorage.setItem('pcfStudio.engineMode', mode);
+    const label = root.querySelector('#rc-engine-mode-label');
+    if (label) label.textContent = mode === 'common' ? 'Common PCF Builder' : 'Legacy Mode';
+  });
+
   // Download buttons
   root.querySelector('#rc-btn-save-fittings').addEventListener('click', () =>
     saveFile(rcState.fittingsPcfText, rcState.rawFileName.replace(/\.[^.]+$/, '') + '_fittings.pcf'));
@@ -299,6 +318,24 @@ function wireEvents(root) {
   // Preview selector
   root.querySelectorAll('.rc-preview-btn').forEach(btn =>
     btn.addEventListener('click', () => switchPreview(root, btn.dataset.preview)));
+
+  // ISOPCF info button — show PCF generation rules modal
+  const isoPcfInfoBtn = root.querySelector('#rc-btn-isopcf-info');
+  if (isoPcfInfoBtn) {
+    isoPcfInfoBtn.addEventListener('click', () => {
+      const cfg = getConfig();
+      const dropList = (cfg.isopcfDrop || ['GASK','INST','PCOM','MISC']).join(', ');
+      const stretchList = (cfg.isopcfStretchPriority || ['PIPE','FLANGE','TEE','BEND']).join(' → ');
+      alert(
+        'ISOPCF CSV Generation Rules\n\n' +
+        `Drop types: ${dropList}\n` +
+        `Stretch priority: ${stretchList}\n` +
+        `Coord overflow: divide by 1000 if any value > ${(cfg.maxEpCoordValue || 999999999).toLocaleString()} mm\n` +
+        `SKEY format: angle-bracket (e.g. <BEBW>)\n` +
+        `CA3 (Material): numeric values only`
+      );
+    });
+  }
 
   // Copy preview content
   root.querySelector('#rc-btn-copy-preview').addEventListener('click', () => {
@@ -514,15 +551,102 @@ async function runS3(root, passOverride = null) {
   }
 }
 
+/**
+ * Build ISOPCF CSV rows by dropping GASK/INST/PCOM/MISC components and
+ * stretching adjacent preferred components to bridge the gaps.
+ */
+function buildIsopcfRows(components, cfg) {
+  const drop = new Set(cfg.isopcfDrop || ['GASK', 'INST', 'PCOM', 'MISC']);
+  const stretchPriority = cfg.isopcfStretchPriority || ['PIPE', 'FLANGE', 'TEE', 'BEND'];
+  let rows = components.map(c => ({ ...c }));
+
+  // For each dropped component, stretch EP2 of the preceding or EP1 of the following
+  // preferred component to bridge the gap
+  for (let i = 0; i < rows.length; i++) {
+    if (!drop.has(rows[i].type)) continue;
+    const dropped = rows[i];
+    if (!dropped.ep1 || !dropped.ep2) continue;
+
+    // Find preceding stretchable component
+    let stretched = false;
+    for (let j = i - 1; j >= 0; j--) {
+      if (drop.has(rows[j].type)) continue;
+      if (stretchPriority.includes(rows[j].type) && rows[j].ep2) {
+        rows[j] = { ...rows[j], ep2: { ...dropped.ep2 } };
+        stretched = true;
+        break;
+      }
+      break;
+    }
+    if (!stretched) {
+      // Try following component
+      for (let j = i + 1; j < rows.length; j++) {
+        if (drop.has(rows[j].type)) continue;
+        if (stretchPriority.includes(rows[j].type) && rows[j].ep1) {
+          rows[j] = { ...rows[j], ep1: { ...dropped.ep1 } };
+          break;
+        }
+        break;
+      }
+    }
+  }
+  return rows.filter(c => !drop.has(c.type));
+}
+
+/**
+ * Build a simple CSV string from ISOPCF component rows for the preview tab.
+ */
+function _buildIsoPcfCsvText(rows) {
+  if (!rows.length) return '(no components)';
+  const headers = ['Type', 'Bore', 'RefNo', 'SKEY', 'EP1', 'EP2', 'CP', 'BP'];
+  const fmtPt = pt => pt ? `${pt.x?.toFixed(1)},${pt.y?.toFixed(1)},${pt.z?.toFixed(1)}` : '';
+  const lines = [headers.join('\t')];
+  for (const c of rows) {
+    lines.push([
+      c.type || '', c.bore ?? '', c.refNo || '', c.skey || '',
+      fmtPt(c.ep1), fmtPt(c.ep2), fmtPt(c.cp), fmtPt(c.bp)
+    ].join('\t'));
+  }
+  return lines.join('\n');
+}
+
 async function runS4(root) {
   if (!rcState.components.length) return;
   passLog(root, `── S4  EMIT ISO  ${_now()} ──`, 'header');
+  if (rcState.engineMode === 'common') {
+    passLog(root, '  ⚙ Common PCF Builder engine active', 'stat');
+  }
   try {
-    const { pcfText } = runStage4(
-      rcState.components, rcState.injectedPipes, rcState.pipelineRef, debugLog
-    );
+    let pcfText;
+    if (rcState.engineMode === 'common') {
+      // Common PCF Builder — use shared pcf-engine emitters
+      const [{ buildPcfHeader }, { emitComponent }, { maybeScaleCoords }] = await Promise.all([
+        import('../pcf-engine/pcf-header.js'),
+        import('../pcf-engine/pcf-emitter.js'),
+        import('../pcf-engine/coord-scaler.js'),
+      ]);
+      const cfg4 = getConfig();
+      const engineCfg = { ...cfg4, engineMode: 'common', decimalPrecision: cfg4.outputSettings?.decimalPlaces ?? 4 };
+      const { components: scaledComps } = await maybeScaleCoords(
+        [...rcState.components, ...(rcState.injectedPipes || [])],
+        null  // auto-scale without popup
+      );
+      const header = buildPcfHeader(rcState.pipelineRef || rcState.rawFileName, engineCfg);
+      const nl = '\r\n';
+      const body = scaledComps.flatMap(c => emitComponent(c, engineCfg)).join(nl);
+      pcfText = header + body;
+    } else {
+      // Legacy engine (unchanged)
+      ({ pcfText } = runStage4(
+        rcState.components, rcState.injectedPipes, rcState.pipelineRef, debugLog
+      ));
+    }
     rcState.isoMetricPcfText = pcfText;
     rcState.stageStatus.s4   = 'done';
+    // Build ISOPCF CSV (drop GASK/INST/PCOM/MISC, stretch adjacent)
+    const cfg4 = getConfig();
+    rcState.isoPcfComponents = buildIsopcfRows(rcState.components, cfg4);
+    rcState.isoPcfCsvText    = _buildIsoPcfCsvText(rcState.isoPcfComponents);
     const totalLines  = pcfText.split('\n').filter(l => l.trim()).length;
     const compBlocks  = (pcfText.match(/^(PIPE|FLANGE|BEND|TEE|OLET|VALVE|SUPPORT|ELBOW)/gm)||[]).length;
     const attrLines   = totalLines - compBlocks;
@@ -1107,8 +1231,8 @@ function showPreview(root, containerId, text) {
   el.textContent = text;
 }
 
-const EDITABLE_2D_COLS = new Set(['PIPELINE-REFERENCE', 'PIPING CLASS', 'RATING', 'LINENO KEY', 'CA1 (Des Pr.)', 'CA2 (Des Temp.)']);
-const FILL_DOWN_2D_COLS = new Set(['LINENO KEY', 'PIPING CLASS', 'RATING', 'CA1 (Des Pr.)', 'CA2 (Des Temp.)']);
+const EDITABLE_2D_COLS = new Set(['PIPELINE-REFERENCE', 'PIPING CLASS', 'RATING', 'LINENO KEY', 'CA1 (Des Pr.)', 'CA2 (Des Temp.)', 'CA3 (Material)']);
+const FILL_DOWN_2D_COLS = new Set(['LINENO KEY', 'PIPING CLASS', 'RATING', 'CA1 (Des Pr.)', 'CA2 (Des Temp.)', 'CA3 (Material)']);
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -1332,7 +1456,7 @@ function _mapToDatatableRow(comp, rowIndex) {
   const lineNoKey = comp.lineNoKey ?? '';
   return {
     _rowIndex:   rowIndex,
-    refNo:       comp.refNo       || '',
+    refNo:       String(comp.refNo || '').replace(/=/g, '').trim(),
     type:        comp.type        || '',
     bore:        comp.bore        ?? null,
     branchBore:  comp.branchBore  ?? null,
@@ -1353,14 +1477,14 @@ function _mapToDatatableRow(comp, rowIndex) {
     ca,
     CA1: ca[1], CA2: ca[2], CA3: ca[3], CA4: ca[4], CA5: ca[5],
     CA6: ca[6], CA7: ca[7], CA8: ca[8], CA9: ca[9], CA10: ca[10],
-    CA97: comp.ca97 ?? '',
+    CA97: String(comp.ca97 ?? '').replace(/=/g, '').trim(),
     CA98: comp.ca98 ?? '',
     PIPING_CLASS: pipingClass,
     RATING: rating,
     LINENO_KEY: lineNoKey,
     ca1: ca[1], ca2: ca[2], ca3: ca[3], ca4: ca[4], ca5: ca[5],
     ca6: ca[6], ca7: ca[7], ca8: ca[8], ca9: ca[9], ca10: ca[10],
-    ca97: comp.ca97 ?? '',
+    ca97: String(comp.ca97 ?? '').replace(/=/g, '').trim(),
     ca98: comp.ca98 ?? ''
   };
 }
@@ -1452,9 +1576,13 @@ function switchPreview(root, activeKey) {
     b.style.borderBottom = '';
   });
   const textMap = {
-    'fittings': rcState.fittingsPcfText,
-    'isofinal': rcState.isoMetricPcfText
+    'fittings':   rcState.fittingsPcfText,
+    'isofinal':   rcState.isoMetricPcfText,
+    'isopcfcsv':  rcState.isoPcfCsvText,
   };
+  // Show ISOPCF info button only when ISOPCF CSV tab is active
+  const infoBtn = root.querySelector('#rc-btn-isopcf-info');
+  if (infoBtn) infoBtn.style.display = activeKey === 'isopcfcsv' ? 'inline-flex' : 'none';
   if (activeKey === 'connmap') {
     showConnMapPreview(root, rcState.connectionMatrix);
   } else if (activeKey === '2dcsv') {

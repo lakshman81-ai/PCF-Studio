@@ -152,6 +152,19 @@ const _defaults = {
   messageSquareEnabled: true,  // emit MESSAGE-SQUARE before every component
   windowsLineEndings:   true,  // use CRLF (\r\n) for output
 
+  // Coordinate overflow guard: if any EP/CP/BP value exceeds this (mm), offer ÷1000
+  maxEpCoordValue:        999999999,
+
+  // ISOPCF CSV: component types to drop + stretch-priority for gap bridging
+  isopcfDrop:            ['GASK', 'INST', 'PCOM', 'MISC'],
+  isopcfStretchPriority: ['PIPE', 'FLANGE', 'TEE', 'BEND'],
+
+  // Fallback SUPPORT name when no coordinate probe data is available
+  supportDefaultCoor:    'CA150',
+
+  // Engine mode: 'legacy' = existing per-module emitters; 'common' = pcf-engine/ shared modules
+  engineMode:            'legacy',
+
   // ── Lookup tables (all from PCF Syntax Master v2.0) ──────────────────────
 
   // ASME B36.10 nominal bore (mm) → OD (mm)

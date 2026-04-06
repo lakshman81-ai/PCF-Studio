@@ -22,6 +22,11 @@ function emitMsgSq(parts) {
   return ['MESSAGE-SQUARE', `${pad(4)}${parts.join(', ')}`];
 }
 
+/** Strip '=' characters from attribute values to prevent PCF syntax corruption */
+function sanitizeAttrValue(val) {
+  return String(val ?? '').replace(/=/g, '').trim();
+}
+
 // ── Component PCF emitters ────────────────────────────────────────────────────
 
 function emitPipe(ep1, ep2, bore, pipelineRef, seqNo, cfg, refNo) {
@@ -62,8 +67,8 @@ function emitFlange(comp, seqNo, cfg) {
   lines.push('FLANGE');
   lines.push(`${pad(4)}END-POINT    ${fmtCoord(comp.ep1, comp.bore, cfg)}`);
   lines.push(`${pad(4)}END-POINT    ${fmtCoord(comp.ep2, comp.bore, cfg)}`);
-  lines.push(`${pad(4)}<SKEY> ${comp.skey}`);
-  if (comp.ca97) lines.push(`${pad(4)}COMPONENT-ATTRIBUTE97    ${comp.ca97}`);
+  lines.push(`${pad(4)}<SKEY> ${sanitizeAttrValue(comp.skey)}`);
+  if (comp.ca97) lines.push(`${pad(4)}COMPONENT-ATTRIBUTE97    ${sanitizeAttrValue(comp.ca97)}`);
   lines.push(`${pad(4)}COMPONENT-ATTRIBUTE98    ${seqNo}`);
   lines.push('');
   return lines;
@@ -81,9 +86,9 @@ function emitBend(comp, seqNo, cfg) {
   lines.push(`${pad(4)}END-POINT    ${fmtCoord(comp.ep1, comp.bore, cfg)}`);
   lines.push(`${pad(4)}END-POINT    ${fmtCoord(comp.ep2, comp.bore, cfg)}`);
   lines.push(`${pad(4)}CENTRE-POINT  ${fmtCoord(comp.cp,  comp.bore, cfg)}`);
-  lines.push(`${pad(4)}<SKEY> ${comp.skey}`);
+  lines.push(`${pad(4)}<SKEY> ${sanitizeAttrValue(comp.skey)}`);
   if (comp.radius) lines.push(`${pad(4)}ANGLE 90.0000`);
-  if (comp.ca97)   lines.push(`${pad(4)}COMPONENT-ATTRIBUTE97    ${comp.ca97}`);
+  if (comp.ca97)   lines.push(`${pad(4)}COMPONENT-ATTRIBUTE97    ${sanitizeAttrValue(comp.ca97)}`);
   lines.push(`${pad(4)}COMPONENT-ATTRIBUTE98    ${seqNo}`);
   lines.push('');
   return lines;
@@ -103,8 +108,8 @@ function emitTee(comp, seqNo, cfg) {
   lines.push(`${pad(4)}END-POINT    ${fmtCoord(comp.ep2, comp.bore, cfg)}`);
   lines.push(`${pad(4)}CENTRE-POINT  ${fmtCoord(comp.cp, comp.bore, cfg)}`);
   lines.push(`${pad(4)}BRANCH1-POINT ${fmtCoord(comp.bp, Number(comp.branchBore || comp.bore), cfg)}`);
-  lines.push(`${pad(4)}<SKEY> ${comp.skey}`);
-  if (comp.ca97) lines.push(`${pad(4)}COMPONENT-ATTRIBUTE97    ${comp.ca97}`);
+  lines.push(`${pad(4)}<SKEY> ${sanitizeAttrValue(comp.skey)}`);
+  if (comp.ca97) lines.push(`${pad(4)}COMPONENT-ATTRIBUTE97    ${sanitizeAttrValue(comp.ca97)}`);
   lines.push(`${pad(4)}COMPONENT-ATTRIBUTE98    ${seqNo}`);
   lines.push('');
   return lines;
@@ -121,8 +126,8 @@ function emitOlet(comp, seqNo, cfg) {
   lines.push('OLET');
   lines.push(`${pad(4)}CENTRE-POINT  ${fmtCoord(comp.cp, comp.bore, cfg)}`);
   lines.push(`${pad(4)}BRANCH1-POINT ${fmtCoord(comp.bp, Number(comp.branchBore || 50), cfg)}`);
-  lines.push(`${pad(4)}<SKEY> ${comp.skey}`);
-  if (comp.ca97) lines.push(`${pad(4)}COMPONENT-ATTRIBUTE97    ${comp.ca97}`);
+  lines.push(`${pad(4)}<SKEY> ${sanitizeAttrValue(comp.skey)}`);
+  if (comp.ca97) lines.push(`${pad(4)}COMPONENT-ATTRIBUTE97    ${sanitizeAttrValue(comp.ca97)}`);
   lines.push(`${pad(4)}COMPONENT-ATTRIBUTE98    ${seqNo}`);
   lines.push('');
   return lines;
@@ -142,8 +147,8 @@ function emitValve(comp, seqNo, cfg) {
   lines.push('VALVE');
   lines.push(`${pad(4)}END-POINT    ${fmtCoord(comp.ep1, comp.bore, cfg)}`);
   lines.push(`${pad(4)}END-POINT    ${fmtCoord(comp.ep2, comp.bore, cfg)}`);
-  lines.push(`${pad(4)}<SKEY> ${comp.skey}`);
-  if (comp.ca97) lines.push(`${pad(4)}COMPONENT-ATTRIBUTE97    ${comp.ca97}`);
+  lines.push(`${pad(4)}<SKEY> ${sanitizeAttrValue(comp.skey)}`);
+  if (comp.ca97) lines.push(`${pad(4)}COMPONENT-ATTRIBUTE97    ${sanitizeAttrValue(comp.ca97)}`);
   lines.push(`${pad(4)}COMPONENT-ATTRIBUTE98    ${seqNo}`);
   lines.push('');
   return lines;
@@ -153,18 +158,24 @@ function emitSupport(comp, seqNo, cfg) {
   const lines = [];
   const guidFull = comp.supportGuid || '';
   const guidOut  = guidFull.startsWith('UCI:') ? guidFull : (guidFull ? `UCI:${guidFull}` : '');
-  const bore     = comp.bore || 0;
-  const supName  = comp.supportName || cfg.supportMapping.fallbackName;
+  // Bore is always 0.0000 for SUPPORT blocks per spec §12
+  const bore     = 0;
+  const supName  = comp.supportName || cfg.supportMapping.fallbackName || cfg.supportDefaultCoor || 'CA150';
   // MESSAGE-SQUARE: SUPPORT, RefNo:=<RefNo>, SeqNo:<SeqNo>, <SupportName>, <GUID>
   lines.push('MESSAGE-SQUARE');
   lines.push(`${pad(4)}SUPPORT, RefNo:=${comp.refNo || ''}, SeqNo:${seqNo}, ${supName}, ${guidOut}`);
   lines.push('SUPPORT');
-  // CO-ORDS: emit only if supportCoor is available
-  if (comp.supportCoor) {
+  // CO-ORDS: use coordinate point when available, otherwise fall back to supportDefaultCoor name
+  if (comp.supportCoor && typeof comp.supportCoor === 'object') {
     lines.push(`${pad(4)}CO-ORDS    ${fmtCoord(comp.supportCoor, bore, cfg)}`);
+  } else {
+    // No coordinates — emit fallback name as CO-ORDS placeholder (spec §12 allows this)
+    const fallbackCoor = cfg.supportDefaultCoor || 'CA150';
+    lines.push(`${pad(4)}CO-ORDS    ${fallbackCoor}`);
   }
   lines.push(`${pad(4)}<SUPPORT_NAME>    ${supName}`);
   if (guidOut) lines.push(`${pad(4)}<SUPPORT_GUID>    ${guidOut}`);
+  // CA1-CA10 intentionally omitted per spec §12 (no CA attributes on SUPPORT)
   lines.push('');
   return lines;
 }
@@ -185,7 +196,7 @@ function emitReducer(comp, seqNo, cfg) {
   lines.push(`${pad(4)}END-POINT    ${fmtCoord(comp.ep1, comp.bore, cfg)}`);
   lines.push(`${pad(4)}END-POINT    ${fmtCoord(comp.ep2, comp.bore, cfg)}`);
   lines.push(`${pad(4)}<SKEY> RCBW`);
-  if (comp.ca97) lines.push(`${pad(4)}COMPONENT-ATTRIBUTE97    ${comp.ca97}`);
+  if (comp.ca97) lines.push(`${pad(4)}COMPONENT-ATTRIBUTE97    ${sanitizeAttrValue(comp.ca97)}`);
   lines.push(`${pad(4)}COMPONENT-ATTRIBUTE98    ${seqNo}`);
   lines.push('');
   return lines;
@@ -207,7 +218,7 @@ function emitBlindFlange(comp, seqNo, cfg) {
   lines.push(`${pad(4)}END-POINT    ${fmtCoord(comp.ep1, comp.bore, cfg)}`);
   lines.push(`${pad(4)}END-POINT    ${fmtCoord(comp.ep2, comp.bore, cfg)}`);
   lines.push(`${pad(4)}<SKEY> BLFL`);
-  if (comp.ca97) lines.push(`${pad(4)}COMPONENT-ATTRIBUTE97    ${comp.ca97}`);
+  if (comp.ca97) lines.push(`${pad(4)}COMPONENT-ATTRIBUTE97    ${sanitizeAttrValue(comp.ca97)}`);
   lines.push(`${pad(4)}COMPONENT-ATTRIBUTE98    ${seqNo}`);
   lines.push('');
   return lines;
@@ -323,9 +334,55 @@ function supportsOnBridge(br, supportComps, cfg) {
  * @param {function} logFn
  * @returns {{ pcfText: string }}
  */
+/** Scale a single point object by 1/divisor */
+function scalePoint(pt, divisor) {
+  if (!pt || typeof pt !== 'object') return pt;
+  return { x: pt.x / divisor, y: pt.y / divisor, z: pt.z / divisor };
+}
+
+/** Scale all coordinate fields of a component by 1/divisor */
+function scaleComponent(comp, divisor) {
+  return {
+    ...comp,
+    ep1: scalePoint(comp.ep1, divisor),
+    ep2: scalePoint(comp.ep2, divisor),
+    cp:  scalePoint(comp.cp,  divisor),
+    bp:  scalePoint(comp.bp,  divisor),
+    supportCoor: (comp.supportCoor && typeof comp.supportCoor === 'object')
+      ? scalePoint(comp.supportCoor, divisor) : comp.supportCoor,
+  };
+}
+
+/** Show a non-blocking notification about coordinate scaling */
+function showCoordScaleNotification() {
+  try {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'position:fixed;top:10px;right:10px;z-index:99999;background:#f59e0b;color:#1c1917;padding:10px 16px;border-radius:6px;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.3)';
+    banner.textContent = '⚠ Coordinates divided by 1000 (overflow guard)';
+    document.body.appendChild(banner);
+    setTimeout(() => banner.remove(), 6000);
+  } catch (_) { /* non-browser environment — ignore */ }
+}
+
 export function runStage4(components, injectedPipes, pipelineRef, logFn = () => {}) {
   const cfg = getRayConfig();
   const eol = cfg.windowsLineEndings ? '\r\n' : '\n';
+  const maxCoord = cfg.maxEpCoordValue || 999999999;
+
+  // Coordinate overflow guard: if any coordinate exceeds threshold, divide all by 1000
+  const allComps = [...components, ...injectedPipes];
+  const hasOverflow = allComps.some(c =>
+    [c.ep1, c.ep2, c.cp, c.bp, c.supportCoor].some(pt =>
+      pt && typeof pt === 'object' &&
+      (Math.abs(pt.x || 0) > maxCoord || Math.abs(pt.y || 0) > maxCoord || Math.abs(pt.z || 0) > maxCoord)
+    )
+  );
+  if (hasOverflow) {
+    components    = components.map(c => scaleComponent(c, 1000));
+    injectedPipes = injectedPipes.map(c => scaleComponent(c, 1000));
+    showCoordScaleNotification();
+    logFn('S4', 'coord-scale-applied', '', { divisor: 1000 });
+  }
 
   const outputLines = buildHeader(pipelineRef, cfg);
   let seqCtr = 0;

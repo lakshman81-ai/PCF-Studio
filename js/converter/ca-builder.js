@@ -58,13 +58,9 @@ const _resolveValue = (slot, primary, caDef) => {
     raw = fieldMap[caDef.csvField] ?? null;
   }
 
-  // If no CSV data, return PLACEHOLDER instead of default
-  // Popup will detect and replace with actual defaults in red
+  // If no CSV data, return null so the caller skips this line (spec §6.2: omit empty CAs)
   const hasRawData = (raw !== null && raw !== undefined && raw !== '');
-  if (!hasRawData) {
-    // Return placeholder: 0 for numeric, Undefined for text
-    return caDef.unit === null ? 'Undefined' : '0';
-  }
+  if (!hasRawData) return null;
 
   const value = raw;
 
@@ -74,8 +70,12 @@ const _resolveValue = (slot, primary, caDef) => {
     if (!isNaN(numVal) && numVal === 0) return null; // signal to write zeroValue directly
   }
 
-  // CA3 (Material) — no numeric formatting
-  if (caDef.unit === null) return String(value ?? caDef.default ?? '');
+  // CA3 (Material) — enforce numeric value
+  if (caDef.unit === null) {
+    const strVal = String(value ?? caDef.default ?? '');
+    const numVal = parseFloat(strVal);
+    return isNaN(numVal) ? strVal : String(numVal);
+  }
 
   // Numeric with unit
   const num = typeof value === 'number' ? value : parseFloat(value);
@@ -237,13 +237,7 @@ export const buildCABlock = (pts, pcfType, config, branchPts = null) => {
       }
     }
 
-    // 2. Unconditional Traceability Injection (Required for Phase 2 Table Mapping)
-    // Always inject the internal Table UI RefNo so the table controller can find this component later
-    const fallbackRef = primary?.RefNo || config?.refno;
-    if (fallbackRef) {
-      lines.push(`${INDENT}COMPONENT-ATTRIBUTE99  ${fallbackRef}`);
-      lines.push(`${INDENT}PIPELINE-REFERENCE  ${fallbackRef}`);
-    }
+    // 2. Traceability reference — CA99/PIPELINE-REFERENCE injection removed (consumers now use CA97)
 
     // 3. Standard CA Slots (Configured)
     if (!rule || !rule.caSlots || rule.caSlots.length === 0) return lines;
@@ -258,6 +252,8 @@ export const buildCABlock = (pts, pcfType, config, branchPts = null) => {
         warn(MOD, 'buildCABlock', `CA definition missing for slot: ${slot}`, { slot, pcfType });
         continue;
       }
+      // Explicit CA8 guard: CA8 (weight) only on FLANGE, VALVE, REDUCER-CONCENTRIC, REDUCER-ECCENTRIC
+      if (slot === 'CA8' && !['FLANGE', 'VALVE', 'REDUCER-CONCENTRIC', 'REDUCER-ECCENTRIC', 'MISC-COMPONENT'].includes(pcfType)) continue;
       if (!_shouldWrite(caDef, pcfType)) continue;
       // Skip if already written by linelist injection (prevents duplicate CA lines)
       const attrName = `COMPONENT-ATTRIBUTE${slot.replace('CA', '')}`;

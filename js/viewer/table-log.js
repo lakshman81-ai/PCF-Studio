@@ -56,7 +56,7 @@ const scanRefNo = (attrs) => {
     if (m) return m[1];
   }
   // Fallback: explicit traceability attributes (written by ca-builder and support writer)
-  return attrs['COMPONENT-ATTRIBUTE99'] || attrs['REFNO'] || '';
+  return attrs['REFNO'] || attrs['COMPONENT-ATTRIBUTE97'] || attrs['COMPONENT-ATTRIBUTE99'] || attrs['PIPELINE-REFERENCE'] || '';
 };
 
 // ── Scan attrs for SeqNo:= pattern ────────────────────────────────────

@@ -122,7 +122,8 @@ export class TableRegenerator {
         const phase1Groups = getState("groups") || groups; // Prefer fresh state
 
         components.forEach(comp => {
-            const ref = comp.attributes["REFNO"] || comp.attributes["PIPELINE-REFERENCE"] || comp.attributes["COMPONENT-ATTRIBUTE99"];
+            const ref = comp.attributes["REFNO"] || comp.attributes["COMPONENT-ATTRIBUTE97"] ||
+                        comp.attributes["PIPELINE-REFERENCE"] || comp.attributes["COMPONENT-ATTRIBUTE99"] || '';
 
             if (ref) {
                 // Ensure group structure

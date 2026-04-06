@@ -279,13 +279,12 @@ export function StatusBar({
   const isRunning = state.smartFix.status === "running";
   const isApplying = state.smartFix.status === "applying";
 
-  // Smart Fix should be disabled once clicked, unless we reset it.
-  // We can track if the smartFixPass > 0 (meaning a pass was run) and disable the main Smart Fix button.
   const hasRunSmartFix = (state.smartFix.smartFixPass || 0) > 0;
 
   // Second Pass ready once Phase 1 Validator is done, no need to wait for Smart Fix 1 or Apply Fixes.
   const isSecondPassReady = isValidationDone && !isRunning && !isApplying && !isWorkerRunning;
-  const canRunSmartFix = isDataLoaded && !isRunning && !isWorkerRunning && isValidationDone && !hasRunSmartFix;
+  // Run First Pass is always available as long as data is loaded and not currently running
+  const canRunSmartFix = isDataLoaded && !isRunning && !isWorkerRunning;
 
   // Apply Fixes enabled if any row approved and not currently applying
   const hasApprovedFixes = state.stage2Data && state.stage2Data.some(r => r._fixApproved === true);
@@ -900,13 +899,13 @@ export function StatusBar({
             onClick: () => { setRunGroup('group1'); handleSmartFix(); },
             disabled: !canRunSmartFix,
             className: "px-4 py-1.5 bg-blue-700 hover:bg-blue-600 rounded font-medium disabled:opacity-50 transition-colors h-full border border-blue-500/40",
-            title: !isValidationDone ? "Run Phase 1 Validator first" : hasRunSmartFix ? "Smart Fix already executed — Undo first to re-run" : "Run Pass 1 (Group 1) directly without opening engine selector",
+            title: "Run Pass 1 (Group 1) directly without opening engine selector",
             children: "\u25B6 Run First Pass"
           }), _jsx("button", {
             onClick: handleSmartFix,
             disabled: !canRunSmartFix,
             className: "px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded font-medium disabled:opacity-50 transition-colors h-full",
-            title: !isValidationDone ? "Run Phase 1 Validator first" : hasRunSmartFix ? "Smart Fix already executed" : "Analyse data and generate fix proposals",
+            title: "Analyse data and generate fix proposals",
             children: isRunning ? "Analyzing..." : "Smart Fix 🔧"
           }), _jsx("button", {
             onClick: handleApplyFixes,

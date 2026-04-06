@@ -121,7 +121,12 @@ function findNearestHitForRed(redPoint, orderedElements, probeLen, tol = 1e-9) {
 
 function splitPipeAtPoints(pipe, cutPoints) {
   if (!cutPoints.length) return [pipe];
-  const pts = [pipe.start, ...cutPoints, pipe.end].sort(
+  // Filter cut points too close to pipe endpoints (within 2mm) to avoid zero-length segments
+  const filtered = cutPoints.filter(cp =>
+    dist2(cp, pipe.start) > 4 && dist2(cp, pipe.end) > 4
+  );
+  if (!filtered.length) return [pipe];
+  const pts = [pipe.start, ...filtered, pipe.end].sort(
     (a, b) => pointParamOnPipe(pipe, a) - pointParamOnPipe(pipe, b)
   );
   const deduped = [];
@@ -130,11 +135,12 @@ function splitPipeAtPoints(pipe, cutPoints) {
   }
   const out = [];
   for (let i = 0; i < deduped.length - 1; i++) {
-    if (dist2(deduped[i], deduped[i + 1]) > 1e-9) {
+    // Only emit segment if length > 1mm (dist2 is squared distance, so >1.0 means >1mm)
+    if (dist2(deduped[i], deduped[i + 1]) > 1.0) {
       out.push({ kind: 'PIPE', start: deduped[i], end: deduped[i + 1], source: pipe.source, _orig: pipe._orig });
     }
   }
-  return out;
+  return out.length ? out : [pipe];
 }
 
 // ── Apply red cuts (ported exactly from MAIN JS) ──────────────────────────────
@@ -225,6 +231,21 @@ export function parseCoordText(text) {
 
   if (!text || !text.trim()) return { points, errors };
 
+  // Step 1: Sanitize — normalize line endings, strip invisible chars, remove AutoCAD prompts
+  text = text
+    .replace(/\r\n/g, '\n')
+    .replace(/Press ENTER to continue:/gi, '')
+    .replace(/[\u200B\uFEFF\u00A0]/g, ' ');
+
+  // Step 2: Parse AutoCAD LIST output format: "at point  X = 1234.5  Y = 5678.9  Z = 0.0"
+  const atPointRegex = /at\s+point\s+X\s*=\s*([-+]?\d*\.?\d+)\s+Y\s*=\s*([-+]?\d*\.?\d+)(?:\s+Z\s*=\s*([-+]?\d*\.?\d+))?/gi;
+  const atPoints = [];
+  let m;
+  while ((m = atPointRegex.exec(text)) !== null) {
+    atPoints.push([parseFloat(m[1]), parseFloat(m[2])]);
+  }
+  if (atPoints.length > 0) return { points: atPoints, errors };
+
   // Try full JSON array first
   const stripped = text.trim();
   if (stripped.startsWith('[') && stripped.includes('[')) {
@@ -301,14 +322,28 @@ export function runSupportProbe(topologyComponents, redPoints, probeLen, support
 
   const log = [`[Support Probe] ${redPoints.length} probe point(s), ${hits.length} hit(s)`];
 
-  const supportComponents = hits.map((h, i) => {
-    log.push(`  ${i + 1}. red=(${h.red_point}) → hit=(${h.hit_point[0].toFixed(2)}, ${h.hit_point[1].toFixed(2)}) dir=${h.direction} dist=${h.distance.toFixed(2)}`);
-    return {
-      type: 'SUPPORT',
-      supportName,
-      coords: { x: h.hit_point[0], y: h.hit_point[1], z: 0 },
-    };
-  });
+  // Collect all existing pipe endpoints for proximity guard
+  const pipeEndpoints = topologyComponents
+    .filter(c => c.type === 'PIPE')
+    .flatMap(c => [[c.ep1.x, c.ep1.y], [c.ep2.x, c.ep2.y]]);
+
+  const supportComponents = hits
+    .filter((h, i) => {
+      // Skip hit if within 2mm of an existing pipe endpoint (would produce zero-length split)
+      const tooClose = pipeEndpoints.some(ep => dist2(h.hit_point, ep) <= 4);
+      if (tooClose) {
+        log.push(`  skip: hit=(${h.hit_point[0].toFixed(2)}, ${h.hit_point[1].toFixed(2)}) — within 2mm of pipe endpoint`);
+      }
+      return !tooClose;
+    })
+    .map((h, i) => {
+      log.push(`  ${i + 1}. red=(${h.red_point}) → hit=(${h.hit_point[0].toFixed(2)}, ${h.hit_point[1].toFixed(2)}) dir=${h.direction} dist=${h.distance.toFixed(2)}`);
+      return {
+        type: 'SUPPORT',
+        supportName,
+        coords: { x: h.hit_point[0], y: h.hit_point[1], z: 0 },
+      };
+    });
 
   // Convert final_elements (split pipes) back to topology component format
   const segmentedComponents = final_elements.map(elem => {
